@@ -1,0 +1,29 @@
+name: test
+
+# Run by hand only (Actions tab → test → Run workflow): Leo keeps CI off
+# on purpose; Actions is on for the daily character list (character-list.yml).
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+      - name: Validate commit attribution
+        run: python scripts/check_commit_attribution.py
+      - name: Set up uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.11.21"
+      - name: Validate dependency lock and exports
+        shell: pwsh
+        run: .\scripts\check_dependency_exports.ps1
+      - run: python -m pip install -r requirements-dev.txt
+      - run: ruff check .
+      - run: python -m unittest discover -s tests -v

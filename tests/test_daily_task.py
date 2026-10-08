@@ -1,0 +1,1903 @@
+import re
+import unittest
+from dataclasses import replace
+from types import SimpleNamespace
+from unittest.mock import patch
+
+import numpy as np
+from ok.util.config import Config
+
+from src.tasks.DailyTask import (
+    BUSINESS_COLLECT_KEYWORDS,
+    GUILD_FINISHED_TEMPLATE,
+    GUILD_MAIN_ACTIVE_TEMPLATE,
+    GUILD_MAIN_FINISHED_TEMPLATE,
+    GUILD_PAGE_KEYWORDS,
+    GUILD_SIGNUP_SUCCESS_TEMPLATE,
+    GUILD_SUCCESS_KEYWORDS,
+    GUILD_TEMPLATE,
+    MY_HOME_TEMPLATE,
+    MY_HOME_TITLE_RELATIVE_ROI,
+    DailyTask,
+)
+from src.tasks.map_trade.models import MatchResult
+from src.tasks.map_trade.vision import Vision
+from src.tasks.quick_hunt import (
+    QUICK_HUNT_ADVENTURE_LABEL_PATTERNS,
+    QUICK_HUNT_ADVENTURE_LIST_ROI,
+    QUICK_HUNT_ADVENTURE_MAP_PATTERNS,
+    QUICK_HUNT_BUTTON_ROI,
+    QUICK_HUNT_COUNT_ROI,
+    QUICK_HUNT_CRYSTAL_CLICK_ROI,
+    QUICK_HUNT_CRYSTAL_ENTRY_PATTERN,
+    QUICK_HUNT_CRYSTAL_POINT,
+    QUICK_HUNT_CRYSTAL_TITLE_ROI,
+    QUICK_HUNT_DIALOG_ROI,
+    QUICK_HUNT_DOUBLE_ROI,
+    QUICK_HUNT_DOUBLE_TEMPLATE,
+    QUICK_HUNT_ENTRY_POINT,
+    QUICK_HUNT_MAP_SCAN_ROI,
+    QUICK_HUNT_RED_POINT,
+    QUICK_HUNT_RESOURCE_CAPACITIES,
+    QUICK_HUNT_RESOURCE_ROI,
+    QUICK_HUNT_RETURN_POINT,
+    QUICK_HUNT_REWARD_ROI,
+    QUICK_HUNT_START_ROI,
+    QUICK_HUNT_STONE_COUNT_ROI,
+    QUICK_HUNT_STONE_LIST_ROI,
+)
+from src.tasks.QuickHuntTask import QuickHuntTask
+from src.tasks.task_vision_mixin import (
+    LOADING_TEMPLATE,
+    REFERENCE_HEIGHT,
+    REFERENCE_WIDTH,
+)
+from src.utils.image_utils import crop_relative
+
+
+class DailyTaskHelperTest(unittest.TestCase):
+    def test_daily_task_is_renamed_and_has_no_quick_hunt_configuration(self):
+        task = object.__new__(DailyTask)
+        task.default_config = {}
+        task.config_description = {}
+        task.config_type = {}
+        with patch("src.tasks.DailyTask.BaseBD2Task.__init__", return_value=None):
+            DailyTask.__init__(task)
+
+        self.assertEqual("公会、小屋、酒馆", task.name)
+        self.assertNotIn("执行快速狩猎", task.default_config)
+        self.assertNotIn("快速狩猎冒险航线", task.default_config)
+        self.assertNotIn("执行快速狩猎", task.status_keys)
+
+    def test_quick_hunt_config_exposes_safe_and_consuming_test_buttons(self):
+        task = object.__new__(QuickHuntTask)
+        task.default_config = {}
+        task.config_description = {}
+        task.config_type = {}
+        with patch("src.tasks.DailyTask.BaseBD2Task.__init__", return_value=None):
+            QuickHuntTask.__init__(task)
+
+        self.assertEqual("快速狩猎", task.name)
+        self.assertNotIn("执行公会签到", task.default_config)
+        self.assertNotIn("执行快速狩猎", task.default_config)
+        self.assertNotIn("快速狩猎圣石属性", task.default_config)
+        self.assertTrue(task.default_config["启用"])
+        self.assertIn("快速狩猎 OCR 阈值", task.default_config)
+        self.assertNotIn("快速狩猎章节图", task.default_config)
+
+        test_keys = (
+            "快速狩猎入口测试",
+            "快速狩猎菜单测试",
+            "快速狩猎圣石测试",
+            "快速狩猎完整测试",
+        )
+        visible_keys = task.config_type["启用"]["sub_configs"][True]
+        for key in (
+            "识别成功后等待秒数",
+            "快速狩猎双倍策略",
+            "快速狩猎资源倾向",
+            "快速狩猎米饭分配",
+        ):
+            self.assertIn(key, visible_keys)
+        self.assertNotIn("快速狩猎章节图", visible_keys)
+        # 狩猎场、冒险航线、圣石洞穴 always run (Leo 2026-10-04): no switches.
+        for key in ("快速狩猎冒险航线", "快速狩猎狩猎场", "快速狩猎圣石洞穴"):
+            self.assertNotIn(key, task.default_config)
+            self.assertNotIn(key, visible_keys)
+        for key in test_keys:
+            with self.subTest(key=key):
+                self.assertIn(key, visible_keys)
+                self.assertEqual("button", task.config_type[key]["type"])
+
+        entry_buttons = task.config_type["快速狩猎入口测试"]["buttons"]
+        menu_buttons = task.config_type["快速狩猎菜单测试"]["buttons"]
+        stone_buttons = task.config_type["快速狩猎圣石测试"]["buttons"]
+        full_button = task.config_type["快速狩猎完整测试"]
+        self.assertEqual(["只读检查入口", "打开狩猎菜单"], [b["text"] for b in entry_buttons])
+        self.assertEqual(["只读检查菜单", "执行米饭(消耗)"], [b["text"] for b in menu_buttons])
+        self.assertEqual(["执行圣石(消耗)", "返回主页"], [b["text"] for b in stone_buttons])
+        self.assertEqual("完整执行(消耗)", full_button["text"])
+        for button in (*entry_buttons, *menu_buttons, *stone_buttons, full_button):
+            self.assertTrue(callable(button["callback"]))
+
+    def test_quick_hunt_home_confirmation_config_survives_hydration(self):
+        task = object.__new__(QuickHuntTask)
+        task.default_config = {}
+        task.config_description = {}
+        task.config_type = {}
+        with patch("src.tasks.DailyTask.BaseBD2Task.__init__", return_value=None):
+            QuickHuntTask.__init__(task)
+
+        expected_configs = {
+            "主页压暗阈值": (
+                185.0,
+                "主页左列灰度 p99 低于该值视为被公告压暗（0-255）。",
+                {"min": 100.0, "max": 250.0, "step": 5.0},
+            ),
+            "主页确认等待秒数": (
+                10.0,
+                "点击主页按钮后确认已返回主页的最长等待时间。",
+                {"min": 2.0, "max": 30.0, "step": 1.0},
+            ),
+        }
+        for key, (default, description, config_type) in expected_configs.items():
+            with self.subTest(key=key):
+                self.assertEqual(default, task.default_config[key])
+                self.assertEqual(description, task.config_description[key])
+                self.assertEqual(config_type, task.config_type[key])
+
+        persisted_config = dict(task.default_config)
+        persisted_config.update(
+            {
+                "主页压暗阈值": 210.0,
+                "主页确认等待秒数": 27.0,
+            }
+        )
+        hydrated_config = Config.__new__(Config)
+        hydrated_config.validator = None
+
+        self.assertFalse(
+            hydrated_config.verify_config(persisted_config, task.default_config)
+        )
+        self.assertEqual(210.0, hydrated_config["主页压暗阈值"])
+        self.assertEqual(27.0, hydrated_config["主页确认等待秒数"])
+
+    def test_quick_hunt_legacy_config_restores_branches_and_drops_chapter(self):
+        task = object.__new__(QuickHuntTask)
+        task.default_config = {}
+        task.config_description = {}
+        task.config_type = {}
+        with patch("src.tasks.DailyTask.BaseBD2Task.__init__", return_value=None):
+            QuickHuntTask.__init__(task)
+
+        hydrated_config = Config.__new__(Config)
+        hydrated_config.validator = None
+        modified = hydrated_config.verify_config(
+            {
+                "识别成功后等待秒数": 1.0,
+                "快速狩猎章节图": "低练度·章节1",
+                "快速狩猎狩猎场": False,
+            },
+            task.default_config,
+        )
+
+        self.assertTrue(modified)
+        self.assertTrue(hydrated_config["启用"])
+        self.assertNotIn("快速狩猎章节图", hydrated_config)
+        # A saved switch from before 2026-10-04 is dropped, not obeyed.
+        self.assertNotIn("快速狩猎狩猎场", hydrated_config)
+
+    def test_quick_hunt_button_queues_selected_test_action(self):
+        task = object.__new__(QuickHuntTask)
+        task._enabled = False
+        task.running = False
+        task._quick_hunt_test_action = None
+        starts = []
+        task.start = lambda: starts.append("start")
+        task.info_set = lambda *_args, **_kwargs: None
+        task.log_warning = lambda *_args, **_kwargs: None
+        task.log_error = lambda *_args, **_kwargs: None
+
+        task._queue_quick_hunt_test("inspect_entry")
+
+        self.assertEqual("inspect_entry", task._quick_hunt_test_action)
+        self.assertEqual(["start"], starts)
+
+    def test_quick_hunt_run_dispatches_pending_test_only(self):
+        task = object.__new__(QuickHuntTask)
+        task._quick_hunt_test_action = "rice"
+        task.config = {"启用": True}
+        task.info_set = lambda *_args, **_kwargs: None
+        task.log_info = lambda *_args, **_kwargs: None
+        task.log_error = lambda *_args, **_kwargs: None
+        calls = []
+        task._quick_hunt_run_rice_scheduler = lambda: calls.append("rice") or True
+        task.run_quick_hunt = lambda: self.fail("normal daily run must not start")
+
+        self.assertTrue(task.run())
+        self.assertEqual(["rice"], calls)
+        self.assertIsNone(task._quick_hunt_test_action)
+
+    def test_quick_hunt_success_emits_standalone_completion_notification(self):
+        task = object.__new__(QuickHuntTask)
+        task._quick_hunt_test_action = None
+        task.config = {"启用": True}
+        task.info_set = lambda *_args, **_kwargs: None
+        notifications = []
+        task.log_info = lambda message, notify=False: notifications.append(
+            (message, notify)
+        )
+        task.run_quick_hunt = lambda: True
+
+        self.assertTrue(QuickHuntTask.run(task))
+        self.assertEqual(
+            [("快速狩猎：流程完成并返回主页。", True)],
+            notifications,
+        )
+
+    def test_quick_hunt_entry_inspection_does_not_click(self):
+        task = object.__new__(QuickHuntTask)
+        task.config = {
+            "快速狩猎模板阈值": 0.78,
+            "快速狩猎像素相似度阈值": 0.72,
+            "主页压暗阈值": 185.0,
+        }
+        task.capture_frame = lambda: np.zeros((720, 1280, 3), dtype=np.uint8)
+        task._quick_hunt_home_signals = lambda _frame: (
+            True,
+            3,
+            255.0,
+            "抽抽乐",
+        )
+        task._quick_hunt_entry_red_state = lambda _frame: (
+            True,
+            (1188, 158),
+            (0, 0, 255),
+            (0, 255, 255),
+        )
+        statuses = {}
+        task.info_set = lambda key, value: statuses.__setitem__(key, value)
+        task.operate_click = lambda *_args, **_kwargs: self.fail(
+            "read-only inspection must not click"
+        )
+
+        self.assertTrue(task._quick_hunt_inspect_entry())
+        self.assertIn("通过", statuses["快速狩猎首页按钮"])
+        self.assertIn("point=(1188, 158)", statuses["快速狩猎红点识别"])
+        self.assertIn("红色", statuses["快速狩猎红点识别"])
+        self.assertEqual("p95=255/185", statuses["快速狩猎主页亮度"])
+        self.assertEqual("抽抽乐", statuses["快速狩猎主页抽抽乐 OCR"])
+
+    def test_quick_hunt_menu_inspection_reports_ocr_and_templates_without_clicking(self):
+        task = object.__new__(QuickHuntTask)
+        task.config = {
+            "快速狩猎模板阈值": 0.78,
+            "快速狩猎像素相似度阈值": 0.72,
+        }
+        task.capture_frame = lambda: np.zeros((720, 1280, 3), dtype=np.uint8)
+        statuses = {}
+        task.info_set = lambda key, value: statuses.__setitem__(key, value)
+        ocr_calls = []
+
+        class FakeVision:
+            def ocr_text(self, _frame, name, relative_roi=None, **_kwargs):
+                ocr_calls.append((name, relative_roi))
+                return name
+
+            def match(self, _frame, _spec):
+                return SimpleNamespace(score=0.9, pixel_score=0.85)
+
+            def passes(self, _match, _spec):
+                return True
+
+            def threshold_for(self, _spec):
+                return 0.78
+
+            def match_all(self, _frame, _spec, minimum_score):
+                self.minimum_score = minimum_score
+                return ()
+
+            def click_client(self, *_args, **_kwargs):
+                raise AssertionError("read-only inspection must not click")
+
+            def click_template(self, *_args, **_kwargs):
+                raise AssertionError("read-only inspection must not click")
+
+        task._quick_vision = lambda: FakeVision()
+
+        self.assertTrue(task._quick_hunt_inspect_menu())
+        self.assertEqual(10, len(ocr_calls))
+        self.assertEqual("测试-菜单标题", statuses["快速狩猎菜单 OCR"])
+        self.assertIn("通过", statuses["快速狩猎收起模板"])
+        self.assertIn("金币=非双倍", statuses["快速狩猎双倍识别"])
+
+    def test_keyword_match_count_ignores_spaces_and_case(self):
+        text = "签到 成功\n奖励已发放至邮箱"
+
+        self.assertEqual(
+            2,
+            DailyTask._keyword_match_count(
+                text,
+                [*GUILD_SUCCESS_KEYWORDS, "不存在"],
+            ),
+        )
+
+    def test_business_collect_keywords_ignore_traditional_frames(self):
+        # BUG-20260829-06 的繁体服帧：2026-08-29 起取消繁体识别，
+        # 仅「取消」繁简同形可命中（1 < minimum_matches=2，判定失败为预期）。
+        traditional_frame = (
+            "Lv.30 餐廳營業額現狀 - 立即前往 累計獎勵 結算 "
+            "Lv.3 魚籠捕獲現狀 立即前往 LV.21釣魚 907/10000(9%) "
+            "回收 助手工作現況 可於夢幻廣場遊戲卡帶>领地中配置助手工作後解鎖 "
+            "取消 一鍵獲得"
+        )
+        mixed_script_frame = traditional_frame.replace(
+            "餐廳營業額現狀", "餐廳營業额現狀"
+        ).replace("一鍵獲得", "一键獲得")
+
+        for frame in (traditional_frame, mixed_script_frame):
+            self.assertEqual(
+                1,
+                DailyTask._keyword_match_count(frame, BUSINESS_COLLECT_KEYWORDS),
+            )
+
+    def test_business_collect_keywords_match_simplified_client_ocr_frames(self):
+        # BUG-20260829-011：RPT-20260829-190031 国服简体客户端两帧失败 OCR 的弹窗相关
+        # 原文。「一键获得」被 OCR 漏读首字成「键获得」，靠其余弹窗文案命中。
+        cn_frame_one = (
+            "永远DE刹那 X269K 124,565 39,784,979 154,429 ！ Q D-4 我的小屋 好友 公会 "
+            "24:00:00 经营管理 格鲁TALK D-24 X Lv.30餐馆营业额现状 亲 立刻前往 战术教材 "
+            "通行证 快速狩 ● 累计奖励 24:00:00 99360 2592 结算 心契之约 "
+            "LV.3 渔笼收获情况 立刻前往 LV.28 钓鱼 5782/17700(32%) 获得经验值+1027 "
+            "● 累计奖励 D-4 24:00:00 回收 助手工作情况 立刻前往 •• ©累计奖励 0 D-11 "
+            "24:00:00 12 16 获得 TAME 取消 键获得 普通战斗解锁 Evil Castle"
+        )
+        cn_frame_two = cn_frame_one.replace(
+            "12 16 获得 TAME 取消 键获得", "获得 VITTAMER 取消 键获得"
+        )
+
+        for frame in (cn_frame_one, cn_frame_two):
+            count = DailyTask._keyword_match_count(frame, BUSINESS_COLLECT_KEYWORDS)
+            self.assertEqual(4, count)
+            # run_business_collect 的 minimum_matches=2 门槛。
+            self.assertGreaterEqual(count, 2)
+
+    def test_business_collect_keywords_do_not_match_home_screen(self):
+        # BUG-20260829-011：主页画面（含经营管理入口文字）不得误命中弹窗关键字。
+        home_frame = (
+            "D-4 我的小屋 好友 公会联合战 0 0 24:00:00 经营管理 格鲁TALK 亲密度 街机 儿游戏"
+        )
+
+        self.assertEqual(
+            0,
+            DailyTask._keyword_match_count(home_frame, BUSINESS_COLLECT_KEYWORDS),
+        )
+
+    def test_reference_click_uses_1920_by_1080_ratios(self):
+        task = object.__new__(DailyTask)
+        calls = {}
+
+        def fake_operate_click(x, y, after_sleep=0):
+            calls["x"] = x
+            calls["y"] = y
+            calls["after_sleep"] = after_sleep
+
+        task.operate_click = fake_operate_click
+
+        task._click_reference(960, 540, after_sleep=0.5)
+
+        self.assertEqual(960 / REFERENCE_WIDTH, calls["x"])
+        self.assertEqual(540 / REFERENCE_HEIGHT, calls["y"])
+        self.assertEqual(0.5, calls["after_sleep"])
+
+    def test_crop_relative_uses_fractional_bounds(self):
+        image = np.arange(100).reshape((10, 10))
+
+        crop = crop_relative(image, (0.2, 0.3, 0.6, 0.8))
+
+        np.testing.assert_array_equal(crop, image[3:8, 2:6])
+
+    def test_guild_sign_in_does_not_click_without_guild_trigger(self):
+        task = object.__new__(DailyTask)
+        task.config = {"公会入口阈值": 0.78}
+        task.capture_frame = lambda: np.zeros((10, 10, 3), dtype=np.uint8)
+        task.info_set = lambda *_args, **_kwargs: None
+        task.log_info = lambda *_args, **_kwargs: None
+        task._wait_for_home_confirmation = lambda *_args, **_kwargs: True
+        task._match = lambda _frame, _spec: MatchResult(-1.0, (0, 0), (0, 0))
+        task._click_reference = lambda *_args, **_kwargs: self.fail("should not click")
+
+        self.assertFalse(DailyTask.run_guild_sign_in(task))
+
+    def _guard_task(self, config):
+        task = object.__new__(DailyTask)
+        task.config = config
+        confirmations = []
+        task._wait_for_home_confirmation = (
+            lambda name, *_args, **_kwargs: confirmations.append(name) or False
+        )
+        task.info_set = lambda *_args, **_kwargs: None
+        task.log_info = lambda *_args, **_kwargs: None
+        task.capture_frame = lambda: self.fail(
+            "入口主页确认失败时不得先抓帧做模板搜索"
+        )
+        task._click_reference = lambda *_args, **_kwargs: self.fail(
+            "入口主页确认失败时不得点击"
+        )
+        task.operate_click = lambda *_args, **_kwargs: self.fail(
+            "入口主页确认失败时不得点击"
+        )
+        return task, confirmations
+
+    def test_guild_sign_in_requires_home_confirmation_before_entry(self):
+        task, confirmations = self._guard_task({"公会入口阈值": 0.78})
+
+        self.assertFalse(DailyTask.run_guild_sign_in(task))
+        self.assertEqual(["公会签到入口前主页确认"], confirmations)
+
+    def test_my_home_sign_in_requires_home_confirmation_before_entry(self):
+        task, confirmations = self._guard_task({"小屋页面等待秒数": 12.0})
+
+        self.assertFalse(DailyTask.run_my_home_sign_in(task))
+        self.assertEqual(["小屋签到入口前主页确认"], confirmations)
+
+    def test_business_collect_requires_home_confirmation_before_entry(self):
+        task, confirmations = self._guard_task({"一键收菜菜单等待秒数": 8.0})
+
+        self.assertFalse(DailyTask.run_business_collect(task))
+        self.assertEqual(["一键收菜入口前主页确认"], confirmations)
+
+    def test_daily_run_counts_home_confirmation_failure_without_clicks(self):
+        task = object.__new__(DailyTask)
+        task.config = {
+            "启用": True,
+            "执行公会签到": True,
+            "执行小屋签到": False,
+            "执行一键收菜": False,
+        }
+        task.info_set = lambda *_args, **_kwargs: None
+        task.log_info = lambda *_args, **_kwargs: None
+        task.log_error = lambda *_args, **_kwargs: None
+        task._wait_for_home_confirmation = lambda *_args, **_kwargs: False
+        actions = []
+        task.capture_frame = lambda: actions.append("capture")
+        task._click_reference = lambda *_args, **_kwargs: actions.append("click")
+        task.operate_click = lambda *_args, **_kwargs: actions.append("click")
+
+        self.assertFalse(DailyTask.run(task))
+        self.assertEqual([], actions)
+
+    def test_guild_finished_template_still_enters_guild(self):
+        task = object.__new__(DailyTask)
+        task.config = {"公会入口阈值": 0.78}
+        task.capture_frame = lambda: np.zeros((10, 10, 3), dtype=np.uint8)
+        task.info_set = lambda *_args, **_kwargs: None
+        task.log_info = lambda *_args, **_kwargs: None
+        task.sleep = lambda *_args, **_kwargs: None
+        clicks = []
+
+        def fake_match(_frame, spec):
+            if spec is GUILD_FINISHED_TEMPLATE:
+                return MatchResult(0.9, (0, 0), (1, 1), pixel_score=0.9)
+            if spec is GUILD_TEMPLATE:
+                return MatchResult(0.7, (0, 0), (1, 1), pixel_score=0.7)
+            return MatchResult(-1.0, (0, 0), (0, 0))
+
+        task._match = fake_match
+        task._click_reference = lambda x, y, **_kwargs: clicks.append((x, y))
+        task._wait_guild_page = lambda _timeout: ("page", "公告事项 进入公会联合战")
+        task._wait_for_home_confirmation = lambda *_args, **_kwargs: True
+
+        self.assertTrue(DailyTask.run_guild_sign_in(task))
+        self.assertEqual([(370, 155), (100, 50)], clicks)
+
+    def test_guild_sign_in_continues_when_loading_is_missing(self):
+        task = object.__new__(DailyTask)
+        task.config = {"公会入口阈值": 0.78}
+        task.capture_frame = lambda: np.zeros((10, 10, 3), dtype=np.uint8)
+        task.info_set = lambda *_args, **_kwargs: None
+        task.log_info = lambda *_args, **_kwargs: None
+        task.sleep = lambda *_args, **_kwargs: None
+        clicks = []
+
+        def fake_match(_frame, spec):
+            if spec is GUILD_TEMPLATE:
+                return MatchResult(0.9, (0, 0), (1, 1), pixel_score=0.9)
+            return MatchResult(-1.0, (0, 0), (0, 0))
+
+        task._match = fake_match
+        task._click_reference = lambda x, y, **_kwargs: clicks.append((x, y))
+        task._wait_guild_page = lambda _timeout: ("page", "公告事项 进入公会联合战")
+        task._wait_for_home_confirmation = lambda *_args, **_kwargs: True
+
+        self.assertTrue(DailyTask.run_guild_sign_in(task))
+        self.assertEqual([(370, 155), (100, 50)], clicks)
+
+    def test_guild_sign_in_waits_before_clicking_success_prompt(self):
+        task = object.__new__(DailyTask)
+        task.config = {"公会入口阈值": 0.78}
+        task.capture_frame = lambda: np.zeros((10, 10, 3), dtype=np.uint8)
+        task.info_set = lambda *_args, **_kwargs: None
+        task.log_info = lambda *_args, **_kwargs: None
+        clicks = []
+        sleeps = []
+
+        def fake_match(_frame, spec):
+            if spec is GUILD_TEMPLATE:
+                return MatchResult(0.9, (0, 0), (1, 1), pixel_score=0.9)
+            return MatchResult(-1.0, (0, 0), (0, 0))
+
+        task._match = fake_match
+        task._click_reference = lambda x, y, **_kwargs: clicks.append((x, y))
+        task.sleep = lambda seconds: sleeps.append(seconds)
+        task._wait_guild_page = lambda _timeout: ("toast", "签到成功")
+        task._wait_for_home_confirmation = lambda *_args, **_kwargs: True
+
+        self.assertTrue(DailyTask.run_guild_sign_in(task))
+        self.assertEqual([1.0, 1.0], sleeps)
+        self.assertEqual([(370, 155), (450, 650), (100, 50)], clicks)
+
+    def test_guild_sign_in_accepts_main_active_template(self):
+        task = object.__new__(DailyTask)
+        task.config = {"公会入口阈值": 0.78}
+        task.capture_frame = lambda: np.zeros((10, 10, 3), dtype=np.uint8)
+        task.info_set = lambda *_args, **_kwargs: None
+        task.log_info = lambda *_args, **_kwargs: None
+        task.sleep = lambda *_args, **_kwargs: None
+        clicks = []
+
+        def fake_match(_frame, spec):
+            if spec is GUILD_MAIN_ACTIVE_TEMPLATE:
+                return MatchResult(0.9, (0, 0), (1, 1), pixel_score=0.9)
+            return MatchResult(-1.0, (0, 0), (0, 0))
+
+        task._match = fake_match
+        task._click_reference = lambda x, y, **_kwargs: clicks.append((x, y))
+        task._wait_guild_page = lambda _timeout: ("page", "公告事项 进入公会联合战")
+        task._wait_for_home_confirmation = lambda *_args, **_kwargs: True
+
+        self.assertTrue(DailyTask.run_guild_sign_in(task))
+        self.assertEqual([(370, 155), (100, 50)], clicks)
+
+    def test_guild_entry_uses_best_template_without_finished_skip(self):
+        task = object.__new__(DailyTask)
+        task.config = {"公会入口阈值": 0.78}
+        task.capture_frame = lambda: np.zeros((10, 10, 3), dtype=np.uint8)
+        task.info_set = lambda *_args, **_kwargs: None
+        task.log_info = lambda *_args, **_kwargs: None
+        task.sleep = lambda *_args, **_kwargs: None
+        clicks = []
+
+        def fake_match(_frame, spec):
+            if spec is GUILD_MAIN_ACTIVE_TEMPLATE:
+                return MatchResult(0.967, (0, 0), (1, 1), pixel_score=0.967)
+            if spec is GUILD_MAIN_FINISHED_TEMPLATE:
+                return MatchResult(0.978, (0, 0), (1, 1), pixel_score=0.978)
+            return MatchResult(-1.0, (0, 0), (0, 0))
+
+        task._match = fake_match
+        task._click_reference = lambda x, y, **_kwargs: clicks.append((x, y))
+        task._wait_guild_page = lambda _timeout: ("page", "公告事项 进入公会联合战")
+        task._wait_for_home_confirmation = lambda *_args, **_kwargs: True
+
+        self.assertTrue(DailyTask.run_guild_sign_in(task))
+        self.assertEqual([(370, 155), (100, 50)], clicks)
+
+    def test_guild_success_template_on_home_frame_is_rejected(self):
+        # BUG-20260901-02：RPT-20260901-233554 中 0.771 的签到成功模板在
+        # 主页帧越过 0.76 阈值，脚本未进公会就判定签到成功；主页三信号
+        # 通过的帧不得算模板命中。
+        task = object.__new__(DailyTask)
+        task.config = {"loading 出现等待秒数": 0.5}
+        task.info_set = lambda *_args, **_kwargs: None
+        task.log_info = lambda *_args, **_kwargs: None
+        task.capture_frame = lambda: object()
+        task._ocr_text = lambda _frame, name: ""
+        task._home_confirmation_signals = lambda _frame, _name: (True, 3, 255.0, "抽抽乐")
+        task.sleep = lambda *_args, **_kwargs: None
+
+        def fake_match(_frame, spec):
+            if spec is GUILD_SIGNUP_SUCCESS_TEMPLATE:
+                return MatchResult(0.771, (0, 0), (1, 1), pixel_score=0.771)
+            return MatchResult(-1.0, (0, 0), (0, 0))
+
+        task._match = fake_match
+
+        with patch(
+            "src.tasks.task_vision_mixin.monotonic",
+            side_effect=[0.0, 0.1, 10.0],
+        ):
+            state, found, _text = DailyTask._wait_loading_or_template_or_ocr(
+                task,
+                "公会签到",
+                GUILD_SIGNUP_SUCCESS_TEMPLATE,
+                GUILD_SUCCESS_KEYWORDS,
+                name="guild_sign_in_early",
+                reject_template_on_home=True,
+            )
+
+        self.assertEqual("none", state)
+        self.assertFalse(found)
+
+    def test_guild_success_template_on_guild_popup_frame_is_accepted(self):
+        # 同一模板在非主页帧（真实弹窗）必须照常命中。
+        task = object.__new__(DailyTask)
+        task.config = {"loading 出现等待秒数": 0.5}
+        task.info_set = lambda *_args, **_kwargs: None
+        task.log_info = lambda *_args, **_kwargs: None
+        task.capture_frame = lambda: object()
+        task._ocr_text = lambda _frame, name: ""
+        task._home_confirmation_signals = lambda _frame, _name: (False, 0, 120.0, "-")
+        task.sleep = lambda *_args, **_kwargs: None
+
+        def fake_match(_frame, spec):
+            if spec is GUILD_SIGNUP_SUCCESS_TEMPLATE:
+                return MatchResult(0.771, (0, 0), (1, 1), pixel_score=0.771)
+            return MatchResult(-1.0, (0, 0), (0, 0))
+
+        task._match = fake_match
+
+        with patch(
+            "src.tasks.task_vision_mixin.monotonic",
+            side_effect=[0.0, 0.1],
+        ):
+            state, found, _text = DailyTask._wait_loading_or_template_or_ocr(
+                task,
+                "公会签到",
+                GUILD_SIGNUP_SUCCESS_TEMPLATE,
+                GUILD_SUCCESS_KEYWORDS,
+                name="guild_sign_in_early",
+                reject_template_on_home=True,
+            )
+
+        self.assertEqual("target", state)
+        self.assertTrue(found)
+
+    def test_guild_return_home_retries_back_click_while_guild_page_detected(self):
+        # BUG-20260901-02：返回键被切页动画吞掉时，只要全帧 OCR 仍读到公会
+        # 页面关键字就补点返回键，最多 3 次。
+        task = object.__new__(DailyTask)
+        task.config = {"公会入口阈值": 0.78}
+        task.capture_frame = lambda: object()
+        task.info_set = lambda *_args, **_kwargs: None
+        task.log_info = lambda *_args, **_kwargs: None
+        task.sleep = lambda *_args, **_kwargs: None
+        clicks = []
+
+        def fake_match(_frame, spec):
+            if spec is GUILD_TEMPLATE:
+                return MatchResult(0.9, (0, 0), (1, 1), pixel_score=0.9)
+            return MatchResult(-1.0, (0, 0), (0, 0))
+
+        task._match = fake_match
+        task._click_reference = lambda x, y, **_kwargs: clicks.append((x, y))
+        task._wait_guild_page = lambda _timeout: ("page", "公告事项 进入公会联合战")
+        task._ocr_text = lambda _frame, name: "公告事项 进入公会联合战 公会商店"
+        task._keyword_match_count = lambda text, keywords: 3
+        # 依次为：入口前主页确认、返回主页第 1/2/3 次确认。
+        wait_results = iter([True, False, False, True])
+        waited_names = []
+        task._wait_for_home_confirmation = (
+            lambda name, **_kwargs: waited_names.append(name) or next(wait_results)
+        )
+
+        self.assertTrue(DailyTask.run_guild_sign_in(task))
+        self.assertEqual(
+            [(370, 155), (100, 50), (100, 50), (100, 50)],
+            clicks,
+        )
+        # 入口前 1 次 + 返回主页 3 次。
+        self.assertEqual(4, len(waited_names))
+
+    def test_guild_return_home_stops_retrying_without_guild_keywords(self):
+        # 返回后既不是主页也没有公会页面关键字（未知页面）时不得盲点返回键，
+        # 避免在别的页面上误点。
+        task = object.__new__(DailyTask)
+        task.config = {"公会入口阈值": 0.78}
+        task.capture_frame = lambda: object()
+        task.info_set = lambda *_args, **_kwargs: None
+        task.log_info = lambda *_args, **_kwargs: None
+        task.sleep = lambda *_args, **_kwargs: None
+        clicks = []
+
+        def fake_match(_frame, spec):
+            if spec is GUILD_TEMPLATE:
+                return MatchResult(0.9, (0, 0), (1, 1), pixel_score=0.9)
+            return MatchResult(-1.0, (0, 0), (0, 0))
+
+        task._match = fake_match
+        task._click_reference = lambda x, y, **_kwargs: clicks.append((x, y))
+        task._wait_guild_page = lambda _timeout: ("page", "公告事项 进入公会联合战")
+        task._ocr_text = lambda _frame, name: ""
+        task._keyword_match_count = lambda text, keywords: 0
+        # 依次为：入口前主页确认（通过）、返回主页第 1 次确认（失败）。
+        confirm_results = iter([True, False])
+        task._wait_for_home_confirmation = lambda name, **_kwargs: next(confirm_results)
+
+        self.assertFalse(DailyTask.run_guild_sign_in(task))
+        self.assertEqual([(370, 155), (100, 50)], clicks)
+
+    def test_guild_page_alone_counts_as_signed_in(self):
+        # No 签到成功 toast (already signed in today): the page UI is enough.
+        task = object.__new__(DailyTask)
+        task.config = {}
+        task.sleep = lambda *_a: None
+        task.capture_frame = lambda: None
+        texts = iter(["", "公会 公告事项 进入公会联合战 公会商店"])
+        task._ocr_text = lambda _frame, name=None: next(texts)
+        self.assertEqual("page", DailyTask._wait_guild_page(task, 60.0)[0])
+
+    def test_guild_page_not_confirmed_times_out(self):
+        task = object.__new__(DailyTask)
+        task.config = {}
+        task.sleep = lambda *_a: None
+        task.capture_frame = lambda: None
+        task._ocr_text = lambda _frame, name=None: "我的小屋 好友"
+        self.assertIsNone(DailyTask._wait_guild_page(task, 0.0)[0])
+
+    def test_guild_page_keywords_match_report_page_ocr(self):
+        # RPT-20260901-233554 AutoLoginTask 实测公会整页 OCR。
+        guild_page = (
+            "公会？ 57,652 公会商店 灵魂挽歌 聊天 √ 自动翻译 8 公会成员 "
+            "230/30 立即加入 咱虽然养老， 但是还活着，定期 公告事项 "
+            "首领防御战进行中。 进入公会联合战 请输入消息。"
+        )
+        self.assertEqual(3, DailyTask._keyword_match_count(guild_page, GUILD_PAGE_KEYWORDS))
+        home_frame = (
+            "D-4 我的小屋 好友 公会联合战 0 0 24:00:00 经营管理 格鲁TALK 亲密度 街机 儿游戏"
+        )
+        self.assertEqual(
+            0,
+            DailyTask._keyword_match_count(home_frame, GUILD_PAGE_KEYWORDS),
+        )
+
+    def test_new_main_templates_use_720p_assets_and_green_mask(self):
+        task = object.__new__(DailyTask)
+        task._templates = {}
+        task._template_masks = {}
+
+        for original_spec in (
+            GUILD_MAIN_ACTIVE_TEMPLATE,
+            GUILD_MAIN_FINISHED_TEMPLATE,
+        ):
+            spec = replace(original_spec, green_mask=False)
+            self.assertTrue(spec.file_name.startswith("image/green/"))
+            template = DailyTask._load_template(task, spec)
+            mask = DailyTask._load_template_mask(task, spec)
+            self.assertEqual(template.shape, mask.shape)
+            self.assertGreater(mask.size, int(np.count_nonzero(mask)))
+
+    def test_my_home_sign_in_continues_when_loading_is_missing(self):
+        task = object.__new__(DailyTask)
+        task.config = {"小屋页面等待秒数": 12.0}
+        task.log_info = lambda *_args, **_kwargs: None
+        task.sleep = lambda *_args, **_kwargs: None
+        clicks = []
+        task._click_reference = lambda x, y, **_kwargs: clicks.append((x, y))
+        task._wait_my_home_page = lambda _timeout: True
+        task._wait_for_home_confirmation = lambda *_args, **_kwargs: True
+
+        self.assertTrue(DailyTask.run_my_home_sign_in(task))
+        self.assertEqual([(166, 158), (100, 50)], clicks)
+
+    def test_my_home_page_is_found_by_its_title_on_the_first_poll(self):
+        # The title bar (not the player's room, which differs per player) is
+        # read on every poll; the 4K template miss no longer costs ~19 s.
+        for title, expected in (("我的小屋", True), ("其他页面", False)):
+            with self.subTest(title=title):
+                task = object.__new__(DailyTask)
+                task.config = {}
+                task.info_set = lambda *_args: None
+                task.sleep = lambda *_args, **_kwargs: None
+                task.capture_frame = lambda: np.zeros((1080, 1920, 3), dtype=np.uint8)
+                task._match = lambda *_args: SimpleNamespace(score=-1.0)
+                task._passes = lambda *_args: False
+                ocr_calls = []
+
+                def ocr_text(_frame, _name, **kwargs):
+                    ocr_calls.append(kwargs)
+                    return title
+
+                task._quick_vision = lambda: SimpleNamespace(ocr_text=ocr_text)
+                self.assertIs(expected, DailyTask._wait_my_home_page(task, 0.0))
+                self.assertEqual(1, len(ocr_calls))
+                self.assertEqual((0.11, 0.01, 0.25, 0.10), ocr_calls[0]["relative_roi"])
+
+    def test_my_home_title_ocr_region_scales_with_client(self):
+        for width, height, expected in (
+            (1920, 1080, (211, 11, 269, 97)),
+            (1280, 720, (141, 7, 179, 65)),
+        ):
+            with self.subTest(size=(width, height)):
+                crops = []
+
+                def ocr(*, frame, **_kwargs):
+                    crops.append(frame.shape[:2])
+                    return [SimpleNamespace(name="我的小屋", x=0, y=0, width=10, height=10)]
+
+                task = SimpleNamespace(
+                    config={"日常 OCR 阈值": 0.2},
+                    ocr_threshold_key="日常 OCR 阈值",
+                    ocr=ocr,
+                    info_set=lambda *_args, **_kwargs: None,
+                )
+                frame = np.zeros((height, width, 3), dtype=np.uint8)
+                boxes = Vision(task).ocr_boxes(
+                    frame, "小屋页面标题", relative_roi=MY_HOME_TITLE_RELATIVE_ROI,
+                    target_height=0,
+                )
+
+                self.assertEqual([(expected[3], expected[2])], crops)
+                self.assertEqual((expected[0], expected[1]), (boxes[0].x, boxes[0].y))
+
+    def test_loading_wait_prioritizes_next_template(self):
+        task = object.__new__(DailyTask)
+        task.config = {"loading 出现等待秒数": 1.0, "loading 消失等待秒数": 1.0}
+        task.capture_frame = lambda: np.zeros((10, 10, 3), dtype=np.uint8)
+        task.info_set = lambda *_args, **_kwargs: None
+        task.log_info = lambda *_args, **_kwargs: None
+        task.sleep = lambda *_args, **_kwargs: None
+        calls = []
+
+        def fake_match(_frame, spec):
+            calls.append(spec.name)
+            if spec is LOADING_TEMPLATE:
+                return MatchResult(0.9, (0, 0), (1, 1), pixel_score=0.9)
+            if spec is MY_HOME_TEMPLATE and calls.count(MY_HOME_TEMPLATE.name) >= 2:
+                return MatchResult(0.9, (0, 0), (1, 1), pixel_score=0.9)
+            return MatchResult(-1.0, (0, 0), (0, 0))
+
+        task._match = fake_match
+
+        self.assertEqual(
+            ("target", True),
+            DailyTask._wait_loading_or_template(task, "小屋签到", MY_HOME_TEMPLATE, "my_home"),
+        )
+        self.assertEqual(
+            [MY_HOME_TEMPLATE.name, LOADING_TEMPLATE.name, MY_HOME_TEMPLATE.name],
+            calls,
+        )
+
+    def test_loading_wait_prioritizes_next_ocr(self):
+        task = object.__new__(DailyTask)
+        task.config = {"loading 出现等待秒数": 1.0, "loading 消失等待秒数": 1.0}
+        task.capture_frame = lambda: np.zeros((10, 10, 3), dtype=np.uint8)
+        task.info_set = lambda *_args, **_kwargs: None
+        task.log_info = lambda *_args, **_kwargs: None
+        task.sleep = lambda *_args, **_kwargs: None
+        calls = []
+
+        def fake_match(_frame, spec):
+            calls.append(spec.name)
+            if spec is LOADING_TEMPLATE:
+                return MatchResult(0.9, (0, 0), (1, 1), pixel_score=0.9)
+            return MatchResult(-1.0, (0, 0), (0, 0))
+
+        task._match = fake_match
+        task._ocr_text = lambda *_args, **_kwargs: (
+            "签到成功" if calls.count(LOADING_TEMPLATE.name) >= 1 else ""
+        )
+
+        self.assertEqual(
+            ("target", True, "签到成功"),
+            DailyTask._wait_loading_or_template_or_ocr(
+                task,
+                "公会签到",
+                GUILD_SIGNUP_SUCCESS_TEMPLATE,
+                GUILD_SUCCESS_KEYWORDS,
+                "guild_sign_in",
+            ),
+        )
+
+    @staticmethod
+    def _business_box(name, ref_x, ref_y, scale=2.0):
+        # OCR boxes are in client pixels; the tests run on a 4K client.
+        return SimpleNamespace(
+            name=name,
+            x=(ref_x - 40) * scale,
+            y=(ref_y - 15) * scale,
+            width=80 * scale,
+            height=30 * scale,
+        )
+
+    def _business_task(self, ocr_frames, home_frames=None):
+        task = object.__new__(DailyTask)
+        task.config = {"一键收菜菜单等待秒数": 8.0}
+        task.info_set = lambda *_args, **_kwargs: None
+        task.log_info = lambda *_args, **_kwargs: None
+        task.capture_frame = lambda: np.zeros((2160, 3840, 3), dtype=np.uint8)
+        frames = list(ocr_frames)
+        task._daily_ocr_boxes = lambda *_args, **_kwargs: frames.pop(0) if frames else []
+        homes = list(home_frames or [])
+        task._frame_confirms_home = lambda *_args, **_kwargs: homes.pop(0) if homes else True
+        task._wait_for_home_confirmation = lambda *_args, **_kwargs: True
+        task.sleep = lambda *_args, **_kwargs: None
+        reference_clicks = []
+        clicks = []
+        task._click_reference = lambda x, y, after_sleep=0.0: reference_clicks.append((x, y))
+        task.operate_click = lambda x, y, after_sleep=0.0: clicks.append(
+            (round(x * 1920), round(y * 1080))
+        )
+        return task, reference_clicks, clicks
+
+    def _popup(self, claim_y=None, cancel_y=None):
+        boxes = [
+            self._business_box("餐馆营业额现状", 700, 300),
+            self._business_box("助手工作情况", 700, 500),
+        ]
+        if cancel_y is not None:
+            boxes.append(self._business_box("取消", 832, cancel_y))
+        if claim_y is not None:
+            boxes.append(self._business_box("一键获得", 1090, claim_y))
+        return boxes
+
+    def test_business_collect_clicks_ocr_found_claim_button(self):
+        # A taller popup moved the buttons from y=814 down to y=900.
+        popup = self._popup(claim_y=900, cancel_y=900)
+        task, reference_clicks, clicks = self._business_task(
+            [
+                popup,
+                [self._business_box("点击画面即可返回", 960, 1000)],
+                self._popup(claim_y=900, cancel_y=900),
+                [],
+            ]
+        )
+
+        self.assertTrue(DailyTask.run_business_collect(task))
+        self.assertEqual([(165, 260)], reference_clicks)
+        self.assertEqual([(1090, 900), (960, 1000), (832, 900)], clicks)
+
+    def test_business_collect_without_claim_button_closes_popup_by_ocr(self):
+        # 一键获得 outside the popup band is not the popup's button.
+        popup = self._popup(cancel_y=760) + [self._business_box("一键获得", 1750, 900)]
+        task, reference_clicks, clicks = self._business_task([popup])
+
+        self.assertTrue(DailyTask.run_business_collect(task))
+        self.assertEqual([(165, 260)], reference_clicks)
+        self.assertEqual([(832, 760)], clicks)
+
+    def test_business_collect_waits_for_a_claim_button_that_fades_in(self):
+        # Live 1080p 2026-09-28: the popup gate passed before 一键获得 showed.
+        task, _reference_clicks, clicks = self._business_task(
+            [self._popup(), self._popup(claim_y=814, cancel_y=814), []]
+        )
+        DailyTask.run_business_collect(task)
+        self.assertIn((1090, 814), clicks)
+
+    def test_business_collect_without_any_button_uses_safe_close_point(self):
+        task, reference_clicks, clicks = self._business_task([self._popup()])
+
+        self.assertTrue(DailyTask.run_business_collect(task))
+        self.assertEqual([(165, 260), (832, 814)], reference_clicks)
+        self.assertEqual([], clicks)
+
+    def test_business_collect_skips_when_popup_is_not_found(self):
+        task, reference_clicks, clicks = self._business_task([])
+        task.config = {"一键收菜菜单等待秒数": 0.0}
+
+        self.assertFalse(DailyTask.run_business_collect(task))
+        self.assertEqual([(165, 260)], reference_clicks)
+        self.assertEqual([], clicks)
+
+    def test_business_collect_limits_blind_taps_on_unknown_overlay(self):
+        popup = self._popup(claim_y=814, cancel_y=814)
+        task, reference_clicks, clicks = self._business_task(
+            [popup], home_frames=[False] * 20
+        )
+
+        self.assertTrue(DailyTask.run_business_collect(task))
+        self.assertEqual([(1090, 814)], clicks)
+        self.assertEqual([(165, 260), (832, 814), (832, 814)], reference_clicks)
+
+    def test_mf_reference_click_uses_1280_by_720_ratios(self):
+        task = object.__new__(QuickHuntTask)
+        calls = []
+        task.operate_click = lambda x, y, **kwargs: calls.append((x, y, kwargs))
+
+        task._click_mf_reference(640, 360, after_sleep=0.5)
+
+        self.assertEqual([(0.5, 0.5, {"after_sleep": 0.5})], calls)
+
+    def test_quick_hunt_rice_zero_uses_new_90_capacity_and_calibrated_roi(self):
+        task = object.__new__(QuickHuntTask)
+        task.info_set = lambda *_args, **_kwargs: None
+        calls = []
+        text = ["0 / 90"]
+
+        class FakeVision:
+            def ocr_text(self, _frame, name, relative_roi=None, **_kwargs):
+                calls.append((name, relative_roi))
+                return text[0]
+
+        task._quick_vision = lambda: FakeVision()
+        task.capture_frame = lambda: np.zeros((720, 1280, 3), dtype=np.uint8)
+        task.sleep = lambda *_args: None
+
+        self.assertEqual({"米饭": 90}, QUICK_HUNT_RESOURCE_CAPACITIES)
+        self.assertTrue(task._quick_hunt_resource_empty("米饭"))
+        text[0] = "0 / 60"
+        self.assertFalse(task._quick_hunt_resource_empty("米饭"))
+        text[0] = "18 / 90"
+        self.assertFalse(task._quick_hunt_resource_empty("米饭"))
+        # 0/90 needs a second agreeing read; the other two stop after one.
+        self.assertEqual(
+            [("米饭数量", QUICK_HUNT_RESOURCE_ROI)] * 4,
+            calls,
+        )
+
+    def test_quick_hunt_resource_empty_needs_two_agreeing_reads(self):
+        task = object.__new__(QuickHuntTask)
+        task.info_set = lambda *_args, **_kwargs: None
+        task.log_info = lambda *_args, **_kwargs: None
+        task.sleep = lambda *_args: None
+        reads = iter(["0 / 90", "30 / 90"])
+
+        class FakeVision:
+            def ocr_text(self, _frame, _name, relative_roi=None, **_kwargs):
+                return next(reads)
+
+        task._quick_vision = lambda: FakeVision()
+        task.capture_frame = lambda: np.zeros((720, 1280, 3), dtype=np.uint8)
+
+        # A dropped digit (30 -> 0) on one frame must not end hunting.
+        self.assertFalse(task._quick_hunt_resource_empty("米饭"))
+
+    def test_quick_hunt_regions_preserve_all_supplied_1920_calibrations(self):
+        self.assertEqual(
+            (1602 / 1920, 38 / 1080, 1724 / 1920, 80 / 1080),
+            QUICK_HUNT_RESOURCE_ROI,
+        )
+        self.assertEqual(
+            (1599 / 1920, 963 / 1080, 1720 / 1920, 1018 / 1080),
+            QUICK_HUNT_BUTTON_ROI,
+        )
+        self.assertEqual(
+            (623 / 1920, 257 / 1080, 1298 / 1920, 826 / 1080),
+            QUICK_HUNT_COUNT_ROI,
+        )
+        self.assertEqual(
+            (963 / 1920, 764 / 1080, 1136 / 1920, 805 / 1080),
+            QUICK_HUNT_START_ROI,
+        )
+        self.assertEqual(
+            (857 / 1920, 965 / 1080, 1055 / 1920, 1019 / 1080),
+            QUICK_HUNT_REWARD_ROI,
+        )
+        self.assertEqual(
+            (750 / 1920, 630 / 1080, 1200 / 1920, 915 / 1080),
+            QUICK_HUNT_DIALOG_ROI,
+        )
+        self.assertEqual(
+            (330 / 1920, 165 / 1080, 1528 / 1920, 865 / 1080),
+            QUICK_HUNT_MAP_SCAN_ROI,
+        )
+        self.assertEqual(
+            (135 / 1920, 205 / 1080, 168 / 1920, 337 / 1080),
+            QUICK_HUNT_DOUBLE_ROI,
+        )
+        self.assertEqual(
+            (235 / 1920, 128 / 1080, 340 / 1920, 452 / 1080),
+            QUICK_HUNT_CRYSTAL_TITLE_ROI,
+        )
+        self.assertEqual(
+            (1689 / 1920, 80 / 1080, 1794 / 1920, 288 / 1080),
+            QUICK_HUNT_STONE_COUNT_ROI,
+        )
+        self.assertEqual(
+            (128 / 1920, 116 / 1080, 228 / 1920, 504 / 1080),
+            QUICK_HUNT_ADVENTURE_LIST_ROI,
+        )
+        self.assertEqual(
+            {"金币": r"^金币$", "经验": r"^史莱姆$"},
+            QUICK_HUNT_ADVENTURE_LABEL_PATTERNS,
+        )
+        self.assertEqual(
+            {"金币": r"哥布林遗迹", "经验": r"史莱姆王国"},
+            QUICK_HUNT_ADVENTURE_MAP_PATTERNS,
+        )
+        self.assertEqual((177, 449), QUICK_HUNT_CRYSTAL_POINT)
+        self.assertEqual((101, 55), QUICK_HUNT_RETURN_POINT)
+        self.assertEqual(QUICK_HUNT_CRYSTAL_TITLE_ROI, QUICK_HUNT_STONE_LIST_ROI)
+        self.assertEqual("Double.png", QUICK_HUNT_DOUBLE_TEMPLATE.file_name)
+        self.assertEqual(QUICK_HUNT_DOUBLE_ROI, QUICK_HUNT_DOUBLE_TEMPLATE.relative_roi)
+
+    def test_quick_hunt_red_diagnostic_uses_scaled_1920_reference_point(self):
+        task = object.__new__(QuickHuntTask)
+        frame = np.zeros((720, 1280, 3), dtype=np.uint8)
+        frame[158, 1188] = (0, 0, 255)
+
+        is_red, point, bgr, hsv = task._quick_hunt_entry_red_state(frame)
+
+        self.assertEqual((1782 / 1920, 237 / 1080), QUICK_HUNT_RED_POINT)
+        self.assertTrue(is_red)
+        self.assertEqual((1188, 158), point)
+        self.assertEqual((0, 0, 255), bgr)
+        self.assertEqual((0, 255, 255), hsv)
+
+    def test_quick_hunt_home_requires_keyword_votes_brightness_and_gacha_ocr(self):
+        task = object.__new__(QuickHuntTask)
+        task.config = {"主页压暗阈值": 185.0}
+        left_text = ["我的小屋 经营管理格鲁TALK 街机游戏"]
+        gacha_text = ["抽抽乐"]
+
+        class FakeVision:
+            def ocr_text(self, _frame, name, relative_roi=None, **_kwargs):
+                self.relative_roi = relative_roi
+                return left_text[0] if "左列" in name else gacha_text[0]
+
+        task._quick_vision = lambda: FakeVision()
+        bright_frame = np.full((1080, 1920, 3), 255, dtype=np.uint8)
+        dimmed_frame = np.zeros((1080, 1920, 3), dtype=np.uint8)
+
+        self.assertTrue(task._quick_hunt_home_signals(bright_frame)[0])
+
+        left_text[0] = "我的小屋"
+        self.assertFalse(task._quick_hunt_home_signals(bright_frame)[0])
+
+        left_text[0] = "我的小屋 格鲁TALK 街机游戏"
+        self.assertFalse(task._quick_hunt_home_signals(dimmed_frame)[0])
+
+        gacha_text[0] = ""
+        self.assertFalse(task._quick_hunt_home_signals(bright_frame)[0])
+
+    def test_quick_hunt_open_menu_prefers_home_ocr_center(self):
+        task = object.__new__(QuickHuntTask)
+        task.config = {"快速狩猎界面等待秒数": 8.0}
+        task._wait_for_quick_hunt_home = lambda: True
+        clicks = []
+        click_ocr_calls = []
+        ocr_calls = []
+        statuses = {}
+        task.operate_click = lambda x, y, **kwargs: clicks.append((x, y, kwargs))
+        task.info_set = lambda key, value: statuses.__setitem__(key, value)
+        task._quick_hunt_click_ocr = lambda patterns, roi, timeout, name: (
+            click_ocr_calls.append((patterns, roi, timeout, name)) or True
+        )
+
+        def wait_ocr(patterns, roi, timeout, name):
+            ocr_calls.append((patterns, roi, timeout, name))
+            return "狩猎场", SimpleNamespace()
+
+        task._quick_hunt_wait_ocr = wait_ocr
+
+        self.assertEqual("opened", task._quick_hunt_open_menu())
+        self.assertEqual([([r"^快速狩猎$"], None, 2.0, "主页快速狩猎入口")], click_ocr_calls)
+        self.assertEqual([], clicks)
+        self.assertEqual([r"狩猎场"], ocr_calls[0][0])
+        self.assertIsNone(ocr_calls[0][1])
+        self.assertEqual(4.0, ocr_calls[0][2])
+        self.assertEqual("快速狩猎菜单确认", ocr_calls[0][3])
+        self.assertEqual("已进入", statuses["快速狩猎入口"])
+        self.assertEqual("狩猎场", statuses["快速狩猎菜单"])
+
+    def test_quick_hunt_open_menu_uses_reference_center_when_ocr_misses(self):
+        task = object.__new__(QuickHuntTask)
+        task.config = {"快速狩猎界面等待秒数": 8.0}
+        task._wait_for_quick_hunt_home = lambda: True
+        task._quick_hunt_click_ocr = lambda *_args, **_kwargs: False
+        task._quick_hunt_wait_ocr = lambda *_args, **_kwargs: (
+            "狩猎场",
+            SimpleNamespace(),
+        )
+        clicks = []
+        statuses = {}
+        task.operate_click = lambda x, y, **kwargs: clicks.append((x, y, kwargs))
+        task.info_set = lambda key, value: statuses.__setitem__(key, value)
+
+        self.assertEqual("opened", task._quick_hunt_open_menu())
+        self.assertEqual((1756 / 1920, 262 / 1080), QUICK_HUNT_ENTRY_POINT)
+        self.assertEqual(
+            [(*QUICK_HUNT_ENTRY_POINT, {"after_sleep": 1.0})],
+            clicks,
+        )
+        self.assertEqual("已进入", statuses["快速狩猎入口"])
+
+    def test_quick_hunt_wait_ocr_scans_full_frame_and_reports_text(self):
+        task = object.__new__(QuickHuntTask)
+        task.capture_frame = lambda: np.zeros((1080, 1920, 3), dtype=np.uint8)
+        task.sleep = lambda _seconds: None
+        statuses = {}
+        task.info_set = lambda key, value: statuses.__setitem__(key, value)
+        seen_rois = []
+
+        class FakeVision:
+            def ocr_boxes(self, _frame, _name, relative_roi=None):
+                seen_rois.append(relative_roi)
+                return [SimpleNamespace(name="狩猎场")]
+
+        task._quick_vision = lambda: FakeVision()
+
+        text, box = task._quick_hunt_wait_ocr(
+            [r"狩猎场"],
+            None,
+            1.0,
+            "快速狩猎菜单确认",
+        )
+
+        self.assertEqual("狩猎场", text)
+        self.assertEqual("狩猎场", box.name)
+        self.assertEqual([None], seen_rois)
+        self.assertEqual(
+            "狩猎场",
+            statuses["快速狩猎菜单确认 OCR"],
+        )
+
+    def test_quick_hunt_open_menu_stops_when_home_is_not_confirmed(self):
+        task = object.__new__(QuickHuntTask)
+        task._wait_for_quick_hunt_home = lambda: False
+        task.info_set = lambda *_args, **_kwargs: None
+        task.sleep = lambda *_args, **_kwargs: self.fail(
+            "home confirmation failure must stop before waiting"
+        )
+        task.capture_frame = lambda: self.fail(
+            "home confirmation failure must stop before reading the entry pixel"
+        )
+        task.operate_click = lambda *_args, **_kwargs: self.fail(
+            "home confirmation failure must not click"
+        )
+
+        self.assertEqual("failed", task._quick_hunt_open_menu())
+
+    def test_quick_hunt_open_menu_does_not_use_red_pixel_as_gate(self):
+        task = object.__new__(QuickHuntTask)
+        task.config = {}
+        task._wait_for_quick_hunt_home = lambda: True
+        task._quick_hunt_entry_red_state = lambda _frame: self.fail(
+            "normal flow must not inspect the unreliable red pixel"
+        )
+        task._quick_hunt_click_ocr = lambda *_args, **_kwargs: True
+        task._quick_hunt_wait_ocr = lambda *_args, **_kwargs: (
+            "狩猎场",
+            SimpleNamespace(),
+        )
+        task.operate_click = lambda *_args, **_kwargs: self.fail(
+            "OCR success must not use the fixed-coordinate fallback"
+        )
+        task.info_set = lambda *_args, **_kwargs: None
+
+        self.assertEqual("opened", task._quick_hunt_open_menu())
+
+    def test_quick_hunt_double_scan_accepts_upper_and_lower_matches_together(self):
+        task = object.__new__(QuickHuntTask)
+        task.config = {
+            "快速狩猎模板阈值": 0.78,
+            "快速狩猎像素相似度阈值": 0.72,
+        }
+        task.capture_frame = lambda: np.zeros((1080, 1920, 3), dtype=np.uint8)
+        statuses = {}
+        task.info_set = lambda key, value: statuses.__setitem__(key, value)
+        upper = SimpleNamespace(center=(150, 240), score=0.95, pixel_score=0.94)
+        lower = SimpleNamespace(center=(150, 310), score=0.96, pixel_score=0.93)
+
+        class FakeVision:
+            def threshold_for(self, _spec):
+                return 0.78
+
+            def match_all(self, _frame, spec, minimum_score):
+                self.spec = spec
+                self.minimum_score = minimum_score
+                return (upper, lower)
+
+        vision = FakeVision()
+        task._quick_vision = lambda: vision
+
+        self.assertEqual(
+            {"金币": True, "经验": True},
+            task._quick_hunt_double_states(),
+        )
+        self.assertEqual("Double.png", vision.spec.file_name)
+        self.assertEqual(0.78, vision.minimum_score)
+        self.assertIn("金币=双倍", statuses["快速狩猎双倍识别"])
+        self.assertIn("经验/史莱姆=双倍", statuses["快速狩猎双倍识别"])
+
+    def test_quick_hunt_double_scan_upper_match_means_gold_only(self):
+        task = object.__new__(QuickHuntTask)
+        task.config = {
+            "快速狩猎模板阈值": 0.78,
+            "快速狩猎像素相似度阈值": 0.72,
+        }
+        task.capture_frame = lambda: np.zeros((1080, 1920, 3), dtype=np.uint8)
+        task.info_set = lambda *_args, **_kwargs: None
+        upper = SimpleNamespace(center=(150, 240), score=0.95, pixel_score=0.94)
+
+        class FakeVision:
+            def threshold_for(self, _spec):
+                return 0.78
+
+            def match_all(self, _frame, _spec, minimum_score):
+                self.minimum_score = minimum_score
+                return (upper,)
+
+        task._quick_vision = lambda: FakeVision()
+
+        self.assertEqual(
+            {"金币": True, "经验": False},
+            task._quick_hunt_double_states(),
+        )
+
+    def test_quick_hunt_prefer_double_uses_gold_when_both_routes_are_double(self):
+        task = object.__new__(QuickHuntTask)
+        task.config = {
+            "快速狩猎双倍策略": "优先双倍",
+            "快速狩猎资源倾向": "经验",
+        }
+        task._quick_hunt_double_states = lambda: {"金币": True, "经验": True}
+        clicks = []
+        task._quick_hunt_click_adventure = (
+            lambda resource: clicks.append(resource) or True
+        )
+        task.log_info = lambda *_args, **_kwargs: None
+
+        self.assertTrue(task._quick_hunt_select_adventure_route())
+        self.assertEqual(["金币"], clicks)
+
+    def test_quick_hunt_ignore_double_always_selects_gold(self):
+        task = object.__new__(QuickHuntTask)
+        task.config = {
+            "快速狩猎双倍策略": "忽视双倍",
+            "快速狩猎资源倾向": "经验",
+        }
+        task._quick_hunt_double_states = lambda: self.fail(
+            "ignore-double mode must not inspect the template"
+        )
+        clicks = []
+        task._quick_hunt_click_adventure = (
+            lambda resource: clicks.append(resource) or True
+        )
+        task.log_info = lambda *_args, **_kwargs: None
+
+        self.assertTrue(task._quick_hunt_select_adventure_route())
+        self.assertEqual(["金币"], clicks)
+
+    def test_quick_hunt_scheduler_uses_current_default_hunting_ground(self):
+        task = object.__new__(QuickHuntTask)
+        task.config = {
+            "快速狩猎米饭分配": "狩猎场x1 / 双倍图MAX",
+        }
+        task.info_set = lambda *_args, **_kwargs: None
+        task.log_info = lambda *_args, **_kwargs: None
+        calls = []
+        task._quick_hunt_resource_empty = lambda _resource: False
+        task._quick_hunt_select_hunting_ground = lambda: self.fail(
+            "current default hunting ground must not be changed"
+        )
+        task._quick_hunt_select_adventure_route = (
+            lambda: calls.append("adventure-no-double") or False
+        )
+        task._quick_hunt_execute_current_map = (
+            lambda mode, stage: calls.append((stage, mode)) or "done"
+        )
+
+        self.assertTrue(task._quick_hunt_run_rice_scheduler())
+        self.assertEqual(
+            [
+                ("狩猎场", "MIN"),
+                "adventure-no-double",
+            ],
+            calls,
+        )
+
+    def test_quick_hunt_adventure_wrong_map_reselects_by_ocr_once(self):
+        task = object.__new__(QuickHuntTask)
+        task.config = {
+            "快速狩猎米饭分配": "狩猎场x1 / 双倍图MAX",
+        }
+        task.info_set = lambda *_args, **_kwargs: None
+        task.log_info = lambda *_args, **_kwargs: None
+        task._quick_hunt_resource_empty = lambda _resource: False
+        task._quick_hunt_select_adventure_route = lambda: "金币"
+        calls = []
+        task._quick_hunt_click_adventure = (
+            lambda resource: calls.append(("reselect", resource)) or True
+        )
+        results = iter(("done", "wrong_map", "done"))
+        task._quick_hunt_execute_current_map = (
+            lambda mode, stage, expected_map_pattern=None: calls.append(
+                (stage, mode, expected_map_pattern)
+            )
+            or next(results)
+        )
+
+        self.assertTrue(task._quick_hunt_run_rice_scheduler())
+        self.assertEqual(
+            [
+                ("狩猎场", "MIN", None),
+                ("冒险航线", "MAX", r"哥布林遗迹"),
+                ("reselect", "金币"),
+                ("冒险航线重试", "MAX", r"哥布林遗迹"),
+            ],
+            calls,
+        )
+
+    def test_quick_hunt_max_hunting_mode_skips_adventure_route(self):
+        task = object.__new__(QuickHuntTask)
+        task.config = {
+            "快速狩猎米饭分配": "狩猎场MAX / 跳过冒险航线",
+        }
+        task.info_set = lambda *_args, **_kwargs: None
+        task.log_info = lambda *_args, **_kwargs: None
+        task._quick_hunt_resource_empty = lambda _resource: False
+        task._quick_hunt_select_hunting_ground = lambda: self.fail(
+            "current default hunting ground must not be changed"
+        )
+        calls = []
+        task._quick_hunt_execute_current_map = (
+            lambda mode, stage: calls.append((stage, mode)) or "done"
+        )
+        task._quick_hunt_select_adventure_route = lambda: self.fail(
+            "MAX hunting allocation must skip adventure"
+        )
+
+        self.assertTrue(task._quick_hunt_run_rice_scheduler())
+        self.assertEqual([("狩猎场", "MAX")], calls)
+
+    def test_quick_hunt_stone_counts_follow_top_to_bottom_element_order(self):
+        task = object.__new__(QuickHuntTask)
+        task.capture_frame = lambda: np.zeros((1080, 1920, 3), dtype=np.uint8)
+        task.info_set = lambda *_args, **_kwargs: None
+        task.log_info = lambda *_args, **_kwargs: None
+        boxes = [
+            SimpleNamespace(name="90", x=1700, y=240, width=40, height=20),
+            SimpleNamespace(name="300", x=1700, y=90, width=40, height=20),
+            SimpleNamespace(name="180", x=1700, y=200, width=40, height=20),
+            SimpleNamespace(name="250", x=1700, y=130, width=40, height=20),
+            SimpleNamespace(name="200", x=1700, y=165, width=40, height=20),
+        ]
+
+        class FakeVision:
+            def ocr_boxes(self, _frame, _name, relative_roi=None):
+                self.relative_roi = relative_roi
+                return boxes
+
+        vision = FakeVision()
+        task._quick_vision = lambda: vision
+
+        self.assertEqual(
+            {"火": 300, "水": 250, "风": 200, "光": 180, "暗": 90},
+            task._quick_hunt_stone_counts(),
+        )
+        self.assertEqual(QUICK_HUNT_STONE_COUNT_ROI, vision.relative_roi)
+
+    def test_quick_hunt_crystal_selects_lowest_stone_and_runs_max(self):
+        task = object.__new__(QuickHuntTask)
+        task.config = {"快速狩猎界面等待秒数": 8.0}
+        task.info_set = lambda *_args, **_kwargs: None
+        task.log_info = lambda *_args, **_kwargs: None
+        clicks = []
+        task._click_reference = lambda x, y, **kwargs: clicks.append((x, y, kwargs))
+        task._quick_hunt_wait_ocr = lambda *_args, **_kwargs: (
+            "火之洞穴 水之洞穴 风之洞穴 光之洞穴 暗之洞穴",
+            SimpleNamespace(),
+        )
+        task._quick_hunt_resource_empty = lambda _resource: False
+        task._quick_hunt_stone_counts = lambda: {
+            "火": 50,
+            "水": 40,
+            "风": 30,
+            "光": 10,
+            "暗": 20,
+        }
+        selected = []
+        task._quick_hunt_click_ocr = (
+            lambda patterns, roi, _timeout, name: selected.append((patterns, roi, name))
+            or True
+        )
+        executions = []
+        task._quick_hunt_execute_current_map = (
+            lambda mode, stage: executions.append((mode, stage)) or "done"
+        )
+
+        self.assertTrue(task._quick_hunt_run_crystal_cave())
+        self.assertEqual([], clicks)
+        self.assertEqual(
+            ([QUICK_HUNT_CRYSTAL_ENTRY_PATTERN], QUICK_HUNT_CRYSTAL_CLICK_ROI, "圣石洞穴入口"),
+            selected[0],
+        )
+        self.assertIn("光", selected[1][0][0])
+        self.assertEqual(QUICK_HUNT_CRYSTAL_TITLE_ROI, selected[1][1])
+        self.assertEqual([("MAX", "光属性圣石")], executions)
+
+    def test_quick_hunt_crystal_entry_falls_back_to_reference_point(self):
+        task = object.__new__(QuickHuntTask)
+        task.config = {"快速狩猎界面等待秒数": 8.0}
+        task.info_set = lambda *_args, **_kwargs: None
+        task.log_info = lambda *_args, **_kwargs: None
+        task.capture_frame = lambda: object()
+        task._quick_hunt_ocr_text = lambda _frame, _roi, name: "圣石洞空"
+        clicks = []
+        task._click_reference = lambda x, y, **kwargs: clicks.append((x, y, kwargs))
+        task._quick_hunt_click_ocr = lambda *_args, **_kwargs: False
+        confirm_calls = []
+
+        def fake_wait_ocr(patterns, roi, timeout, name):
+            confirm_calls.append((patterns, roi, timeout, name))
+            return ("火之洞穴 水之洞穴 风之洞穴 光之洞穴 暗之洞穴", SimpleNamespace())
+
+        task._quick_hunt_wait_ocr = fake_wait_ocr
+        task._quick_hunt_resource_empty = lambda _resource: True
+
+        self.assertTrue(task._quick_hunt_run_crystal_cave())
+        self.assertEqual([(177, 449, {"after_sleep": 0.8})], clicks)
+        self.assertEqual(1, len(confirm_calls))
+        self.assertEqual(
+            ([r"[火水风光暗].?洞穴"], QUICK_HUNT_CRYSTAL_TITLE_ROI), confirm_calls[0][:2]
+        )
+
+    def test_quick_hunt_crystal_retries_when_panel_confirmation_fails(self):
+        task = object.__new__(QuickHuntTask)
+        task.config = {"快速狩猎界面等待秒数": 8.0}
+        task.info_set = lambda *_args, **_kwargs: None
+        logs = []
+        task.log_info = lambda message, *_args, **_kwargs: logs.append(message)
+        entry_clicks = []
+        task._quick_hunt_click_ocr = (
+            lambda patterns, roi, _timeout, name: entry_clicks.append((patterns, roi))
+            or True
+        )
+        confirm_results = iter([("", None), ("", None), ("火之洞穴 水之洞穴", None)])
+        task._quick_hunt_wait_ocr = lambda *_args, **_kwargs: next(confirm_results)
+        task._quick_hunt_resource_empty = lambda _resource: True
+
+        self.assertTrue(task._quick_hunt_run_crystal_cave())
+        self.assertEqual(3, len(entry_clicks))
+        self.assertTrue(
+            all(roi == QUICK_HUNT_CRYSTAL_CLICK_ROI for _patterns, roi in entry_clicks)
+        )
+        self.assertEqual(2, sum("重试" in message for message in logs))
+
+    def test_quick_hunt_crystal_fails_after_exhausted_retries_without_torch_check(self):
+        task = object.__new__(QuickHuntTask)
+        task.config = {"快速狩猎界面等待秒数": 8.0}
+        task.info_set = lambda *_args, **_kwargs: None
+        task.log_info = lambda *_args, **_kwargs: None
+        task.capture_frame = lambda: object()
+        task._quick_hunt_ocr_text = lambda _frame, _roi, name: ""
+        task._quick_hunt_click_ocr = lambda *_args, **_kwargs: False
+        task._click_reference = lambda *args, **kwargs: None
+        task._quick_hunt_wait_ocr = lambda *_args, **_kwargs: ("", None)
+        task._save_flow_diagnostic = lambda *_args, **_kwargs: None
+        resource_checks = []
+        task._quick_hunt_resource_empty = lambda resource: resource_checks.append(resource) or True
+
+        self.assertFalse(task._quick_hunt_run_crystal_cave())
+        self.assertEqual([], resource_checks)
+
+    def test_quick_hunt_crystal_entry_falls_back_to_full_frame_ocr(self):
+        # RPT-20260902-225925：实机 CLICK_ROI 条带 OCR 连续全空但整屏菜单
+        # 可读到"圣石洞穴"，入口可能偏移到条带外；条带未命中应整屏兜底，
+        # 命中后不得再回退固定参考点。
+        task = object.__new__(QuickHuntTask)
+        task.config = {"快速狩猎界面等待秒数": 8.0}
+        task.info_set = lambda *_args, **_kwargs: None
+        task.log_info = lambda *_args, **_kwargs: None
+        entry_attempts = []
+
+        def click_ocr(_patterns, roi, _timeout, **_kwargs):
+            entry_attempts.append(roi)
+            return roi is None
+
+        task._quick_hunt_click_ocr = click_ocr
+        task._click_reference = lambda *_args, **_kwargs: self.fail(
+            "full-frame OCR hit must not use the fixed-coordinate fallback"
+        )
+        task._quick_hunt_wait_ocr = (
+            lambda *_args, **_kwargs: ("火之洞穴 水之洞穴 光之洞穴", None)
+        )
+        task._quick_hunt_resource_empty = lambda _resource: True
+
+        self.assertTrue(task._quick_hunt_run_crystal_cave())
+        self.assertEqual(
+            [QUICK_HUNT_CRYSTAL_CLICK_ROI, None], entry_attempts,
+        )
+
+    def test_quick_hunt_crystal_entry_pattern_matches_garbled_ocr_last_char(self):
+        # BUG-20260901-03：实机与 20260724 录屏帧按任务管线复现，CLICK_ROI
+        # 裁剪 OCR 稳定把"圣石洞穴"末字读成"空/究"，四字全匹配从未命中，
+        # 识别点击路径实机从未生效；正则须放行前三字。
+        for seen in ("圣石洞空", "圣石洞究", "圣石洞 究", "圣石洞穴"):
+            value = QuickHuntTask._normalize_text(seen)
+            self.assertTrue(
+                re.search(QUICK_HUNT_CRYSTAL_ENTRY_PATTERN, value),
+                f"entry pattern should match OCR text {seen!r}",
+            )
+
+    def test_quick_hunt_open_menu_retries_swallowed_entrance_click(self):
+        # RPT-20260901-233554 23:32 一轮：入口点击被主页动画吞掉后单击定
+        # 胜负直接失败；仍在主页时应补点入口，最多 3 次。
+        task = object.__new__(QuickHuntTask)
+        task.config = {"快速狩猎界面等待秒数": 8.0}
+        task._wait_for_quick_hunt_home = lambda: True
+        task.capture_frame = lambda: object()
+        task.info_set = lambda *_args, **_kwargs: None
+        task.log_info = lambda *_args, **_kwargs: None
+        task.operate_click = lambda *_args, **_kwargs: self.fail(
+            "OCR hit must not use the fixed-coordinate fallback"
+        )
+        entrance_clicks = []
+        task._quick_hunt_click_ocr = (
+            lambda patterns, roi, timeout, name: entrance_clicks.append(name) or True
+        )
+        task._quick_hunt_home_signals = lambda _frame: (True, 3, 255.0, "抽抽乐")
+        confirm_results = iter([("", None), ("", None), ("狩猎场 野猪洞穴", None)])
+        task._quick_hunt_wait_ocr = lambda *_args, **_kwargs: next(confirm_results)
+
+        self.assertEqual("opened", task._quick_hunt_open_menu())
+        self.assertEqual(3, len(entrance_clicks))
+
+    def test_quick_hunt_open_menu_stops_retrying_when_left_home(self):
+        # 点击后若已离开主页（导航到未知页面），不得盲点固定入口坐标。
+        task = object.__new__(QuickHuntTask)
+        task.config = {"快速狩猎界面等待秒数": 8.0}
+        task._wait_for_quick_hunt_home = lambda: True
+        task.capture_frame = lambda: object()
+        task.info_set = lambda *_args, **_kwargs: None
+        task.log_info = lambda *_args, **_kwargs: None
+        task.operate_click = lambda *_args, **_kwargs: self.fail(
+            "must not blind-click the fixed entry when not on home"
+        )
+        entrance_clicks = []
+        task._quick_hunt_click_ocr = (
+            lambda patterns, roi, timeout, name: entrance_clicks.append(name) or True
+        )
+        task._quick_hunt_home_signals = lambda _frame: (False, 0, 120.0, "-")
+        task._quick_hunt_wait_ocr = lambda *_args, **_kwargs: ("", None)
+
+        self.assertEqual("failed", task._quick_hunt_open_menu())
+        self.assertEqual(1, len(entrance_clicks))
+
+    def test_quick_hunt_adventure_map_is_verified_before_consuming_rice(self):
+        task = object.__new__(QuickHuntTask)
+        task.config = {"快速狩猎界面等待秒数": 8.0}
+        task.info_set = lambda *_args, **_kwargs: None
+        task.log_info = lambda *_args, **_kwargs: None
+        click_calls = []
+        task._quick_hunt_click_ocr = (
+            lambda patterns, roi, timeout, name, **kwargs: click_calls.append(
+                (patterns, roi, timeout, name, kwargs)
+            )
+            or True
+        )
+        map_calls = []
+        task._quick_hunt_wait_map_confirmation = (
+            lambda pattern, name: map_calls.append((pattern, name))
+            or ("matched", "哥布林遗迹极难", None)
+        )
+        task._quick_hunt_wait_result = lambda _stage: "done"
+        # The free-only switch and cost guard have their own tests.
+        task._quick_hunt_ensure_free_only = lambda _stage: True
+        task._quick_hunt_cost_within_free = lambda _stage: True
+
+        self.assertEqual(
+            "done",
+            task._quick_hunt_execute_current_map(
+                "MAX",
+                "冒险航线",
+                expected_map_pattern=r"哥布林遗迹",
+            ),
+        )
+        self.assertEqual(
+            [(r"哥布林遗迹", "冒险航线-地图确认")],
+            map_calls,
+        )
+        self.assertEqual("冒险航线-MAX", click_calls[1][3])
+        self.assertEqual("冒险航线-开始狩猎", click_calls[2][3])
+
+    def test_quick_hunt_adventure_map_mismatch_cancels_before_consuming_rice(self):
+        task = object.__new__(QuickHuntTask)
+        task.config = {"快速狩猎界面等待秒数": 8.0}
+        task.info_set = lambda *_args, **_kwargs: None
+        task.log_info = lambda *_args, **_kwargs: None
+        click_calls = []
+        task._quick_hunt_click_ocr = (
+            lambda patterns, roi, timeout, name, **kwargs: click_calls.append(
+                (patterns, roi, timeout, name, kwargs)
+            )
+            or True
+        )
+        task._quick_hunt_wait_map_confirmation = (
+            lambda *_args, **_kwargs: (
+                "wrong",
+                "野猪洞穴极难",
+                "野猪洞穴",
+            )
+        )
+        task._quick_hunt_wait_result = lambda _stage: self.fail(
+            "错误地图不得开始狩猎"
+        )
+
+        self.assertEqual(
+            "wrong_map",
+            task._quick_hunt_execute_current_map(
+                "MAX",
+                "冒险航线",
+                expected_map_pattern=r"哥布林遗迹",
+            ),
+        )
+        self.assertEqual("冒险航线-取消错误地图", click_calls[1][3])
+        self.assertEqual([r"取消"], click_calls[1][0])
+
+    def test_quick_hunt_adventure_click_uses_requested_ocr_region_and_center(self):
+        task = object.__new__(QuickHuntTask)
+        task.config = {"快速狩猎界面等待秒数": 8.0}
+        calls = []
+        task._quick_hunt_click_ocr = (
+            lambda patterns, roi, timeout, name: calls.append(
+                (patterns, roi, timeout, name)
+            )
+            or True
+        )
+
+        self.assertTrue(task._quick_hunt_click_adventure("金币"))
+        self.assertEqual(
+            [
+                (
+                    [r"^金币$"],
+                    QUICK_HUNT_ADVENTURE_LIST_ROI,
+                    8.0,
+                    "选择金币航线",
+                )
+            ],
+            calls,
+        )
+
+    def test_quick_hunt_map_confirmation_rejects_known_wrong_map_immediately(self):
+        task = object.__new__(QuickHuntTask)
+        task.config = {"快速狩猎界面等待秒数": 8.0}
+        task.capture_frame = lambda: np.zeros((1080, 1920, 3), dtype=np.uint8)
+        task.info_set = lambda *_args, **_kwargs: None
+        task.log_info = lambda *_args, **_kwargs: None
+        task.sleep = lambda _seconds: self.fail("明确错误地图不应继续等待")
+
+        class FakeVision:
+            def ocr_boxes(self, _frame, _name, relative_roi=None):
+                self.relative_roi = relative_roi
+                return [SimpleNamespace(name="野猪洞穴极难")]
+
+        vision = FakeVision()
+        task._quick_vision = lambda: vision
+
+        self.assertEqual(
+            ("wrong", "野猪洞穴极难", "野猪洞穴"),
+            task._quick_hunt_wait_map_confirmation(
+                r"哥布林遗迹",
+                "冒险航线-地图确认",
+            ),
+        )
+        self.assertEqual(QUICK_HUNT_COUNT_ROI, vision.relative_roi)
+
+    def test_quick_hunt_run_dispatches_rice_then_crystal_and_returns_home(self):
+        task = object.__new__(QuickHuntTask)
+        task.config = {}
+        task.info_set = lambda *_args, **_kwargs: None
+        task.log_info = lambda *_args, **_kwargs: None
+        calls = []
+        task._quick_hunt_open_menu = lambda: calls.append("open") or "opened"
+        task._quick_hunt_run_rice_scheduler = lambda: calls.append("rice") or True
+        task._quick_hunt_run_crystal_cave = lambda: calls.append("crystal") or True
+        task._quick_hunt_return_home = lambda: calls.append("home") or True
+
+        self.assertTrue(task.run_quick_hunt())
+        self.assertEqual(["open", "rice", "crystal", "home"], calls)
+
+    def test_quick_hunt_rice_failure_skips_crystal_and_returns_home(self):
+        task = object.__new__(QuickHuntTask)
+        task.config = {}
+        task.info_set = lambda *_args, **_kwargs: None
+        calls = []
+        task._quick_hunt_open_menu = lambda: "opened"
+        task._quick_hunt_run_rice_scheduler = lambda: calls.append("rice-failed") or False
+        task._quick_hunt_run_crystal_cave = lambda: calls.append("crystal") or True
+        task._quick_hunt_return_home = lambda: calls.append("home") or True
+
+        self.assertFalse(task.run_quick_hunt())
+        self.assertEqual(["rice-failed", "home"], calls)
+
+    def test_quick_hunt_return_home_uses_fixed_point_and_three_signal_confirmation(self):
+        task = object.__new__(QuickHuntTask)
+        task.config = {"主页压暗阈值": 185.0}
+        task.capture_frame = lambda: np.zeros((1080, 1920, 3), dtype=np.uint8)
+        task.info_set = lambda *_args, **_kwargs: None
+        signals = iter(
+            (
+                (False, 1, 120.0, "-"),
+                (True, 3, 253.0, "抽抽乐"),
+            )
+        )
+        task._quick_hunt_home_signals = lambda _frame: next(signals)
+        task._quick_hunt_current_map_context = lambda _frame: "野猪洞穴"
+        clicks = []
+        task._click_reference = lambda x, y, **kwargs: clicks.append((x, y, kwargs))
+
+        self.assertTrue(task._quick_hunt_return_home())
+        self.assertEqual([(101, 55, {"after_sleep": 2.0})], clicks)
+
+    def test_quick_hunt_return_home_clears_announcement_before_clicking_back(self):
+        task = object.__new__(QuickHuntTask)
+        task.config = {"主页压暗阈值": 185.0}
+        task.capture_frame = lambda: np.zeros((1080, 1920, 3), dtype=np.uint8)
+        task.info_set = lambda *_args, **_kwargs: None
+        signals = iter(
+            (
+                (False, 3, 126.0, "抽抽乐"),
+                (True, 3, 253.0, "抽抽乐"),
+            )
+        )
+        task._quick_hunt_home_signals = lambda _frame: next(signals)
+        task._quick_hunt_current_map_context = lambda _frame: "野猪洞穴"
+        task._home_p95_threshold = lambda: 185.0
+        announcement_signals = []
+        task.clear_temporary_home_announcement_if_needed = (
+            lambda **values: announcement_signals.append(values) or True
+        )
+        task._click_reference = lambda *_args, **_kwargs: self.fail(
+            "temporary announcement must be cleared before another back click"
+        )
+        task.sleep = lambda *_args, **_kwargs: None
+
+        self.assertTrue(task._quick_hunt_return_home())
+        self.assertEqual(1, len(announcement_signals))
+        self.assertEqual("快速狩猎返回主页", announcement_signals[0]["context"])
+
+    def test_quick_hunt_return_context_uses_full_frame_and_top_left_match(self):
+        task = object.__new__(QuickHuntTask)
+        task.info_set = lambda *_args, **_kwargs: None
+        frame = np.zeros((1080, 1920, 3), dtype=np.uint8)
+        seen_rois = []
+
+        class FakeVision:
+            def ocr_boxes(self, _frame, _name, relative_roi=None):
+                seen_rois.append(relative_roi)
+                return [
+                    SimpleNamespace(
+                        name="1.野猪洞穴",
+                        x=700,
+                        y=500,
+                        width=100,
+                        height=20,
+                    ),
+                    SimpleNamespace(
+                        name="暗之洞穴",
+                        x=200,
+                        y=80,
+                        width=100,
+                        height=20,
+                    ),
+                ]
+
+        task._quick_vision = lambda: FakeVision()
+
+        self.assertEqual("属性洞穴", task._quick_hunt_current_map_context(frame))
+        self.assertEqual([None], seen_rois)
+
+    def test_quick_hunt_box_enabled_rejects_dark_text(self):
+        box = SimpleNamespace(x=2, y=2, width=6, height=6)
+        dark = np.zeros((10, 10, 3), dtype=np.uint8)
+        light = dark.copy()
+        light[2:8, 2:8] = 255
+
+        self.assertFalse(QuickHuntTask._quick_hunt_box_enabled(dark, box))
+        self.assertTrue(QuickHuntTask._quick_hunt_box_enabled(light, box))
+
+    def test_daily_run_stops_after_failed_step(self):
+        task = object.__new__(DailyTask)
+        task.config = {
+            "启用": True,
+            "执行公会签到": True,
+            "执行小屋签到": True,
+            "执行一键收菜": True,
+        }
+        task.info_set = lambda *_args, **_kwargs: None
+        task.log_info = lambda *_args, **_kwargs: None
+        task.log_error = lambda *_args, **_kwargs: None
+        calls = []
+        task.run_guild_sign_in = lambda: calls.append("guild") or False
+        task.run_my_home_sign_in = lambda: calls.append("home") or True
+        task.run_business_collect = lambda: calls.append("business") or True
+        task.run_quick_hunt = lambda: calls.append("hunt") or True
+
+        self.assertFalse(DailyTask.run(task))
+        self.assertEqual(["guild"], calls)
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -1,0 +1,872 @@
+{
+ "换语言": {
+  "en": "Change language",
+  "ja": "言語の変更",
+  "ko": "언어 변경"
+ },
+ "要现在重新打开工具吗？": {
+  "en": "Reopen the tool now?",
+  "ja": "今すぐツールを開き直しますか？",
+  "ko": "지금 도구를 다시 열까요?"
+ },
+ "现在重开": {
+  "en": "Reopen now",
+  "ja": "今すぐ開き直す",
+  "ko": "지금 다시 열기"
+ },
+ "等一下": {
+  "en": "Later",
+  "ja": "あとで",
+  "ko": "나중에"
+ },
+ "正在跑，跑完后重新打开工具就会换成新语言": {
+  "en": "A run is going. Reopen the tool after it ends to switch language.",
+  "ja": "実行中です。終わってからツールを開き直すと言語が切り替わります。",
+  "ko": "실행 중입니다. 끝난 뒤 도구를 다시 열면 언어가 바뀝니다."
+ },
+ "没办法自动重开，请自己关掉工具再打开": {
+  "en": "Couldn't reopen automatically. Close the tool and open it again.",
+  "ja": "自動で開き直せませんでした。ツールを閉じてから開き直してください。",
+  "ko": "자동으로 다시 열지 못했습니다. 도구를 닫고 다시 열어 주세요."
+ },
+ "出售日历": {
+  "en": "Sale calendar",
+  "ja": "販売カレンダー",
+  "ko": "판매 달력"
+ },
+ "出售保险": {
+  "en": "Sell safety",
+  "ja": "販売セーフティ",
+  "ko": "판매 안전장치"
+ },
+ "买什么、做哪些料理、每天卖什么都在那里设定": {
+  "en": "What to buy, which dishes to cook and what to sell each day are set there",
+  "ja": "何を買うか、どの料理を作るか、毎日何を売るかはそちらで設定します",
+  "ko": "무엇을 살지, 어떤 요리를 할지, 매일 무엇을 팔지는 그곳에서 설정합니다"
+ },
+ "公会、小屋、酒馆": {
+  "en": "Guild, House, Tavern",
+  "ja": "ギルド、マイハウス、酒場",
+  "ko": "길드, 마이홈, 주점"
+ },
+ "只处理带黄色!新获得标记的装备：R/SR 与 3★/4★ 角色的 UR 专用装备强化到 +7 并自动分解；5★ 角色 UR 专用、上锁、穿戴中、已强化的一律保留。": {
+  "en": "Only handles Gear with the yellow ! new mark: R/SR and UR Exclusive Gear of 3★/4★ Characters are upgraded to +7 and dismantled automatically; 5★ Characters' UR Exclusive Gear and locked, equipped or already upgraded Gear are always kept.",
+  "ja": "黄色の「!」新規マークが付いた装備だけを処理：R/SR と 3★/4★ キャラクターの UR 専用装備を +7 まで強化して自動分解。5★ キャラクターの UR 専用装備、ロック中・装備中・強化済みの装備はすべて残す。",
+  "ko": "노란색 ! 신규 표시가 있는 장비만 처리: R/SR과 3★/4★ 캐릭터의 UR 전용 장비는 +7까지 강화해 자동 분해. 5★ 캐릭터의 UR 전용 장비와 잠금·착용 중·강화된 장비는 모두 보관."
+ },
+ "执行公会签到、小屋签到和酒馆一键收菜。": {
+  "en": "Does the Guild Check-in, House Check-in and Tavern Collect All.",
+  "ja": "ギルドの出席チェック、マイハウスの出席チェック、酒場の一括受取を行う。",
+  "ko": "길드 출석, 마이홈 출석, 주점 일괄 수령을 진행."
+ },
+ "按周进度跑剧情卡带；每天最多7张，每张安全区吸收1次，战斗区域1、2各执行吸收、召集、压制。": {
+  "en": "Farms Story Packs by weekly progress; up to 7 a day. Each Pack: Absorb once in the Safe area, and Absorb, Assemble and Overpower in Battle areas 1 and 2.",
+  "ja": "週の進行に合わせてストーリーカセットを周回。1日最大7個。各カセットで安全エリアで吸収1回、戦闘エリア1・2でそれぞれ吸収・招集・制圧。",
+  "ko": "주간 진행도에 따라 스토리팩을 파밍. 하루 최대 7개. 팩마다 안전 지역에서 흡수 1회, 전투 지역 1·2에서 각각 흡수·소집·제압."
+ },
+ "每日按配置依次执行购买、制作料理和出售。": {
+  "en": "Each day, buys, cooks and sells in order, as configured.",
+  "ja": "毎日、設定どおりに購入・調理・販売を順に行う。",
+  "ko": "매일 설정대로 구매, 요리하기, 판매를 차례로 진행."
+ },
+ "背包 → 装备制作 → 第一件 N 装备，开启自动分解、强化到 +5 后按「强化」：制作、强化、分解一次完成（每周任务：制作装备）。只做 N 装备。": {
+  "en": "Bag → Craft Gear → first N Gear, turn on auto-dismantle, set upgrade to +5 and press \"Upgrade\": crafts, upgrades and dismantles in one go (Weekly Quest: Craft Gear). Only crafts N Gear.",
+  "ja": "バッグ → 装備製作 → 最初の N 装備、自動分解をオンにし +5 まで強化に設定して「強化」を押す：製作・強化・分解を一度に完了（ウィークリークエスト：装備製作）。N 装備のみ製作。",
+  "ko": "가방 → 장비 제작 → 첫 번째 N 장비, 자동 분해를 켜고 +5 강화로 설정한 뒤 '강화'를 누름: 제작·강화·분해를 한 번에 완료 (주간 퀘스트: 장비 제작). N 장비만 제작."
+ },
+ "跑哪些卡带、每次最多跑几张都在那里设定": {
+  "en": "Which Packs to farm and how many per run are set there",
+  "ja": "どのカセットを周回するか、1回に最大何個かはそちらで設定します",
+  "ko": "어떤 팩을 파밍할지, 한 번에 최대 몇 개를 할지는 그곳에서 설정합니다"
+ },
+ "• 纯后台执行：游戏在独立的分身窗口里跑，缩小也照跑\n• 照常用电脑，鼠标键盘不会被抢\n\n第一次要先设定：\n• 会跳出 Windows 确认，请按「是」\n• 设定好后再按一次这个按钮": {
+  "en": "• Runs fully in the background: the game plays in its own clone window, and keeps going when minimized\n• Keep using your PC; your mouse and keyboard stay yours\n\nFirst-time setup:\n• Windows will ask for confirmation; press \"Yes\"\n• When it's done, press this button again",
+  "ja": "• 完全バックグラウンド実行：ゲームは独立した分身ウィンドウで動き、最小化しても続きます\n• いつも通りPCを使えます。マウスとキーボードは奪われません\n\n初回のみ設定が必要です：\n• Windows の確認が表示されたら「はい」を押してください\n• 設定が終わったら、もう一度このボタンを押してください",
+  "ko": "• 완전 백그라운드 실행: 게임은 별도의 분신 창에서 실행되며, 최소화해도 계속됩니다\n• 평소처럼 PC를 사용하세요. 마우스와 키보드를 빼앗지 않습니다\n\n처음 한 번 설정이 필요합니다:\n• Windows 확인 창이 뜨면 \"예\"를 누르세요\n• 설정이 끝나면 이 버튼을 다시 누르세요"
+ },
+ "• 纯后台执行：游戏在独立的分身窗口里跑，缩小也照跑\n• 照常用电脑，鼠标键盘不会被抢\n\n要先改一个登录设定：\n• 分身要用密码登录，现在只允许 PIN／脸\n• 在「登录选项」关掉「只允许 Windows Hello 登录」\n• 改好后再按一次这个按钮": {
+  "en": "• Runs fully in the background: the game plays in its own clone window, and keeps going when minimized\n• Keep using your PC; your mouse and keyboard stay yours\n\nOne sign-in setting needs changing first:\n• The clone signs in with a password; this account only allows PIN/face now\n• In \"Sign-in options\", turn off \"Only allow Windows Hello sign-in\"\n• Then press this button again",
+  "ja": "• 完全バックグラウンド実行：ゲームは独立した分身ウィンドウで動き、最小化しても続きます\n• いつも通りPCを使えます。マウスとキーボードは奪われません\n\n先にサインイン設定を1つ変更してください：\n• 分身はパスワードでサインインしますが、今は PIN／顔のみ許可されています\n• 「サインイン オプション」で「Windows Hello サインインのみを許可する」をオフにします\n• 変更したら、もう一度このボタンを押してください",
+  "ko": "• 완전 백그라운드 실행: 게임은 별도의 분신 창에서 실행되며, 최소화해도 계속됩니다\n• 평소처럼 PC를 사용하세요. 마우스와 키보드를 빼앗지 않습니다\n\n먼저 로그인 설정 하나를 바꿔야 합니다:\n• 분신은 비밀번호로 로그인하는데, 지금은 PIN/얼굴만 허용됩니다\n• \"로그인 옵션\"에서 \"Windows Hello 로그인만 허용\"을 끄세요\n• 바꾼 뒤 이 버튼을 다시 누르세요"
+ },
+ "• 纯后台执行：游戏在独立的分身窗口里跑，缩小也照跑\n• 照常用电脑，鼠标键盘不会被抢\n\n按「前往」后：\n• Windows 确认请按「是」\n• 第一次要打账户密码（不是 PIN），之后会记住\n• 游戏和日常自动开始，进度在这里看": {
+  "en": "• Runs fully in the background: the game plays in its own clone window, and keeps going when minimized\n• Keep using your PC; your mouse and keyboard stay yours\n\nAfter you press \"Go\":\n• Press \"Yes\" on the Windows confirmation\n• The first time, type your account password (not the PIN); it's remembered after that\n• The game and the Dailies start by themselves; follow the progress here",
+  "ja": "• 完全バックグラウンド実行：ゲームは独立した分身ウィンドウで動き、最小化しても続きます\n• いつも通りPCを使えます。マウスとキーボードは奪われません\n\n「進む」を押すと：\n• Windows の確認で「はい」を押してください\n• 初回のみアカウントのパスワード（PIN ではありません）を入力します。以後は記憶されます\n• ゲームとデイリーは自動で始まり、進行状況はここで確認できます",
+  "ko": "• 완전 백그라운드 실행: 게임은 별도의 분신 창에서 실행되며, 최소화해도 계속됩니다\n• 평소처럼 PC를 사용하세요. 마우스와 키보드를 빼앗지 않습니다\n\n\"이동\"을 누르면:\n• Windows 확인 창에서 \"예\"를 누르세요\n• 처음 한 번은 계정 비밀번호(PIN 아님)를 입력하면, 이후에는 기억됩니다\n• 게임과 일일 과제가 자동으로 시작되며, 진행 상황은 여기에서 볼 수 있습니다"
+ },
+ "纯后台执行：游戏在独立的分身窗口里跑，缩小也照跑；你照常用电脑，鼠标键盘不会被抢": {
+  "en": "Runs fully in the background: the game plays in its own clone window and keeps going when minimized; keep using your PC, your mouse and keyboard stay yours",
+  "ja": "完全バックグラウンド実行：ゲームは独立した分身ウィンドウで動き、最小化しても続きます。いつも通りPCを使えます。マウスとキーボードは奪われません",
+  "ko": "완전 백그라운드 실행: 게임은 별도의 분신 창에서 실행되며 최소화해도 계속됩니다. 평소처럼 PC를 사용하세요. 마우스와 키보드를 빼앗지 않습니다"
+ },
+ "在桌面分身跑": {
+  "en": "Run on Clone Desktop",
+  "ja": "分身デスクトップで実行",
+  "ko": "분신 데스크톱에서 실행"
+ },
+ "前往": {
+  "en": "Go",
+  "ja": "進む",
+  "ko": "이동"
+ },
+ "第一次设定": {
+  "en": "First-time setup",
+  "ja": "初回設定",
+  "ko": "처음 설정"
+ },
+ "打开登录选项": {
+  "en": "Open sign-in options",
+  "ja": "サインイン オプションを開く",
+  "ko": "로그인 옵션 열기"
+ },
+ "取消": {
+  "en": "Cancel",
+  "ja": "キャンセル",
+  "ko": "취소"
+ },
+ "一般执行时请别动键盘和鼠标": {
+  "en": "During a normal run, please don't touch the keyboard or mouse",
+  "ja": "通常実行中はキーボードとマウスに触れないでください",
+  "ko": "일반 실행 중에는 키보드와 마우스를 건드리지 마세요"
+ },
+ "游戏还没开": {
+  "en": "The game isn't open",
+  "ja": "ゲームが起動していません",
+  "ko": "게임이 실행되지 않았습니다"
+ },
+ "要帮你打开游戏并开始跑吗？": {
+  "en": "Open the game and start the run for you?",
+  "ja": "ゲームを起動して実行を始めますか？",
+  "ko": "게임을 실행하고 바로 시작할까요?"
+ },
+ "打开并开始": {
+  "en": "Open and start",
+  "ja": "起動して開始",
+  "ko": "실행하고 시작"
+ },
+ "领取活动奖励": {
+  "en": "Claim Event rewards",
+  "ja": "イベント報酬を受け取る",
+  "ko": "이벤트 보상 받기"
+ },
+ "活动奖励": {
+  "en": "Event rewards",
+  "ja": "イベント報酬",
+  "ko": "이벤트 보상"
+ },
+ "打开活动页，依序领取有红点的活动：任务（全部领取）、兑换所（用完代币）、转盘（转到不能转）、骰子（自动进行）。有钻石或付费字样的页面一律不碰。": {
+  "en": "Opens the Events page and claims each Event with a red badge: tasks (Claim All), exchange shops (spend all tokens), wheels (spin until you can't), dice (auto play). Pages showing Diamonds or paid text are never touched.",
+  "ja": "イベントページを開き、赤い印のあるイベントを順に受け取ります：タスク（一括受取）、交換所（トークンを使い切る）、ルーレット（回せなくなるまで）、サイコロ（自動進行）。ダイヤや有償の文字があるページには一切触れません。",
+  "ko": "이벤트 페이지를 열고 빨간 표시가 있는 이벤트를 차례로 받습니다: 과제(모두 받기), 교환소(토큰을 모두 사용), 룰렛(돌릴 수 없을 때까지), 주사위(자동 진행). 다이아나 유료 문구가 있는 페이지는 절대 건드리지 않습니다."
+ },
+ "版本、更新和致谢": {
+  "en": "Version, updates and credits",
+  "ja": "バージョン・更新・クレジット",
+  "ko": "버전, 업데이트, 감사의 말"
+ },
+ "版本": {
+  "en": "Version",
+  "ja": "バージョン",
+  "ko": "버전"
+ },
+ "版本 {version}": {
+  "en": "Version {version}",
+  "ja": "バージョン {version}",
+  "ko": "버전 {version}"
+ },
+ "有新版本": {
+  "en": "Update available",
+  "ja": "新しいバージョンあり",
+  "ko": "새 버전 있음"
+ },
+ "新": {
+  "en": "New",
+  "ja": "新",
+  "ko": "새"
+ },
+ "更新内容": {
+  "en": "What's new",
+  "ja": "更新内容",
+  "ko": "업데이트 내용"
+ },
+ "使用须知": {
+  "en": "Before you use it",
+  "ja": "ご利用の前に",
+  "ko": "이용 안내"
+ },
+ "这个工具免费、开源，不收任何费用。": {
+  "en": "This tool is free and open source. It never costs anything.",
+  "ja": "このツールは無料のオープンソースで、料金は一切かかりません。",
+  "ko": "이 도구는 무료 오픈 소스이며, 어떤 비용도 받지 않습니다."
+ },
+ "不是游戏官方的工具，跟游戏公司没有关系。": {
+  "en": "It is not an official game tool and has nothing to do with the game company.",
+  "ja": "ゲーム公式のツールではなく、ゲーム会社とは関係ありません。",
+  "ko": "게임 공식 도구가 아니며, 게임사와 관련이 없습니다."
+ },
+ "自动操作有帐号风险，请了解后自己决定要不要用。": {
+  "en": "Automation can put your account at risk. Understand that before deciding to use it.",
+  "ja": "自動操作にはアカウントのリスクがあります。理解したうえで使うかどうかを決めてください。",
+  "ko": "자동 조작은 계정에 위험이 있을 수 있습니다. 이해한 뒤 사용 여부를 직접 결정하세요."
+ },
+ "致谢（参考或使用了这些项目）": {
+  "en": "Credits (projects we learned from or use)",
+  "ja": "クレジット（参考・使用したプロジェクト）",
+  "ko": "감사의 말 (참고하거나 사용한 프로젝트)"
+ },
+ "这个工具的起点": {
+  "en": "Where this tool started",
+  "ja": "このツールの出発点",
+  "ko": "이 도구의 출발점"
+ },
+ "底层框架和一键更新": {
+  "en": "Framework and one-click updates",
+  "ja": "基盤フレームワークとワンクリック更新",
+  "ko": "기반 프레임워크와 원클릭 업데이트"
+ },
+ "界面元件": {
+  "en": "UI components",
+  "ja": "UI コンポーネント",
+  "ko": "UI 구성 요소"
+ },
+ "桌面分身的做法": {
+  "en": "How Clone Desktop works",
+  "ja": "分身デスクトップの仕組み",
+  "ko": "분신 데스크톱 방식"
+ },
+ "桌面分身的画面窗口": {
+  "en": "Clone Desktop viewer window",
+  "ja": "分身デスクトップの表示ウィンドウ",
+  "ko": "분신 데스크톱 화면 창"
+ },
+ "跑图路线的想法": {
+  "en": "Ideas for Farming routes",
+  "ja": "周回ルートのアイデア",
+  "ko": "파밍 경로 아이디어"
+ },
+ "BD2DB 图鉴": {
+  "en": "BD2DB Database",
+  "ja": "BD2DB 図鑑",
+  "ko": "BD2DB 도감"
+ },
+ "游戏名称、角色和装备资料": {
+  "en": "Game names, characters and gear data",
+  "ja": "ゲーム内の名称・キャラ・装備データ",
+  "ko": "게임 명칭, 캐릭터, 장비 정보"
+ },
+ "跑商售卖物品表": {
+  "en": "Trade Run sell list",
+  "ja": "交易周回の販売アイテム表",
+  "ko": "교역 파밍 판매 아이템표"
+ },
+ "跑商要卖哪些东西": {
+  "en": "What Trade Run sells",
+  "ja": "交易周回で売るアイテム",
+  "ko": "교역 파밍에서 팔 아이템"
+ },
+ "文字辨识": {
+  "en": "Text recognition (OCR)",
+  "ja": "文字認識（OCR）",
+  "ko": "문자 인식(OCR)"
+ },
+ "简繁转换": {
+  "en": "Simplified/Traditional Chinese conversion",
+  "ja": "簡体字・繁体字の変換",
+  "ko": "간체·번체 변환"
+ },
+ "思源黑体 Noto Sans": {
+  "en": "Noto Sans TC / SC",
+  "ja": "Noto Sans TC / SC",
+  "ko": "Noto Sans TC / SC"
+ },
+ "界面字体（SIL OFL 1.1）": {
+  "en": "UI font (SIL OFL 1.1)",
+  "ja": "UI フォント（SIL OFL 1.1）",
+  "ko": "UI 글꼴 (SIL OFL 1.1)"
+ },
+ "源代码、下载、回报问题": {
+  "en": "Source code, downloads, bug reports",
+  "ja": "ソースコード・ダウンロード・不具合報告",
+  "ko": "소스 코드, 다운로드, 문제 신고"
+ },
+ "今天 {time}": {
+  "en": "Today {time}",
+  "ja": "今日 {time}",
+  "ko": "오늘 {time}"
+ },
+ "下周{weekday} {time} 刷新": {
+  "en": "Resets next {weekday} {time}",
+  "ja": "来週{weekday}曜 {time} リセット",
+  "ko": "다음 주 {weekday}요일 {time} 초기화"
+ },
+ "每周{weekday} {time} 重新开始 · 每张卡带一周跑一次": {
+  "en": "Resets every {weekday} {time} · each Pack runs once a week",
+  "ja": "毎週{weekday}曜 {time} にリセット · 各カセットは週1回周回",
+  "ko": "매주 {weekday}요일 {time} 초기화 · 팩마다 주 1회 파밍"
+ },
+ "每天 {time} 重置": {
+  "en": "Resets daily at {time}",
+  "ja": "毎日 {time} リセット",
+  "ko": "매일 {time} 초기화"
+ },
+ "{date} · 游戏日从 {time} 开始": {
+  "en": "{date} · the game day starts at {time}",
+  "ja": "{date} · ゲームの1日は {time} から",
+  "ko": "{date} · 게임 하루는 {time}부터"
+ },
+ "{month} 月 · {time} 更新 · 点一天看要卖什么": {
+  "en": "Month {month} · updates at {time} · click a day to see what to sell",
+  "ja": "{month}月 · {time} に更新 · 日付をクリックで売却品を確認",
+  "ko": "{month}월 · {time}에 갱신 · 날짜를 눌러 판매 품목 보기"
+ },
+ "使用说明": {
+  "en": "Guide",
+  "ja": "使い方",
+  "ko": "사용 안내"
+ },
+ "第一次用，先花一分钟看完": {
+  "en": "New here? Take a minute to read this",
+  "ja": "初めての方は1分で読めます",
+  "ko": "처음이라면 1분만 읽어 주세요"
+ },
+ "日常有两种跑法": {
+  "en": "Two ways to run the dailies",
+  "ja": "デイリーの実行方法は2つ",
+  "ko": "일일 실행 방법은 두 가지"
+ },
+ "最常用": {
+  "en": "Most used",
+  "ja": "よく使う",
+  "ko": "가장 많이 씀"
+ },
+ "边跑边用电脑": {
+  "en": "Use the PC meanwhile",
+  "ja": "PCを使いながら",
+  "ko": "PC를 쓰면서"
+ },
+ "游戏开在前面，工具直接点游戏": {
+  "en": "The game stays in front; the tool clicks it",
+  "ja": "ゲームを前面に出し、ツールが直接操作",
+  "ko": "게임을 앞에 두고 도구가 직접 클릭"
+ },
+ "跑的时候不要动鼠标、键盘": {
+  "en": "Don't touch the mouse or keyboard while it runs",
+  "ja": "実行中はマウスとキーボードに触れない",
+  "ko": "실행 중에는 마우스·키보드를 건드리지 마세요"
+ },
+ "游戏没开会先问你，再帮你开": {
+  "en": "If the game isn't open, it asks, then opens it",
+  "ja": "ゲームが未起動なら確認してから起動",
+  "ko": "게임이 꺼져 있으면 물어본 뒤 실행"
+ },
+ "游戏在另一个分身窗口里跑，缩小也照跑": {
+  "en": "The game runs in a separate clone window, even minimised",
+  "ja": "ゲームは別の分身ウィンドウで動き、最小化しても続行",
+  "ko": "게임은 별도 분신 창에서 실행, 최소화해도 계속"
+ },
+ "电脑照常用，鼠标键盘不会被抢": {
+  "en": "Keep using the PC; mouse and keyboard stay yours",
+  "ja": "PCは普段通り使え、マウスとキーボードは奪われない",
+  "ko": "PC를 평소처럼 사용, 마우스·키보드를 뺏기지 않음"
+ },
+ "要 Windows 专业版；第一次要设定，并输入微软账户密码": {
+  "en": "Needs Windows Pro; first time: set it up and enter your Microsoft account password",
+  "ja": "Windows Pro が必要。初回は設定と Microsoft アカウントのパスワード入力",
+  "ko": "Windows Pro 필요. 처음에는 설정 후 Microsoft 계정 비밀번호 입력"
+ },
+ "两个按钮都在「首页」。": {
+  "en": "Both buttons are on \"Home\".",
+  "ja": "どちらのボタンも「ホーム」にあります。",
+  "ko": "두 버튼 모두 「홈」에 있습니다."
+ },
+ "先看一次设定": {
+  "en": "Check the settings once",
+  "ja": "まず設定を一度確認",
+  "ko": "먼저 설정을 한 번 확인"
+ },
+ "照自己的习惯调好再跑": {
+  "en": "Set it up your way before running",
+  "ja": "自分の遊び方に合わせてから実行",
+  "ko": "내 방식에 맞게 맞춘 뒤 실행"
+ },
+ "要跑哪些、跑几次、要不要做料理，都在这几页": {
+  "en": "What to run, how many times, whether to cook: it's all on these pages",
+  "ja": "何を何回実行するか、料理するかはこれらのページで",
+  "ko": "무엇을 몇 번 돌릴지, 요리할지 모두 이 페이지에서"
+ },
+ "跑图前，游戏里先设好这三样": {
+  "en": "Before Farming, set these three things in the game",
+  "ja": "周回の前にゲーム内でこの3つを設定",
+  "ko": "파밍 전에 게임에서 이 세 가지를 설정"
+ },
+ "技能按顺序放": {
+  "en": "Put the skills in order",
+  "ja": "スキルを順番に配置",
+  "ko": "스킬을 순서대로 배치"
+ },
+ "右下角技能，按 1 → 4 放：探查、吸收、召集、压制": {
+  "en": "Bottom-right skills, slots 1 → 4: Search, Absorb, Assemble, Overpower",
+  "ja": "右下のスキルを 1 → 4 の順に：探索、吸収、招集、制圧",
+  "ko": "오른쪽 아래 스킬을 1 → 4 순서로: 탐색, 흡수, 소집, 제압"
+ },
+ "用哪一组技能（TAB 切换的 1/2/3）都可以": {
+  "en": "Any skill set (1/2/3, switched with TAB) is fine",
+  "ja": "どのスキルセット（TAB で切替の 1/2/3）でも可",
+  "ko": "어느 스킬 세트(TAB으로 바꾸는 1/2/3)든 괜찮음"
+ },
+ "建议跑之前先放好": {
+  "en": "Best to set them before running",
+  "ja": "実行前に配置しておくのがおすすめ",
+  "ko": "실행 전에 미리 배치해 두기를 권장"
+ },
+ "左上角保持小地图": {
+  "en": "Keep the top-left map small",
+  "ja": "左上はミニマップのままに",
+  "ko": "왼쪽 위는 작은 지도로 유지"
+ },
+ "✓ 保持小地图": {
+  "en": "✓ Keep it small",
+  "ja": "✓ ミニマップのまま",
+  "ko": "✓ 작은 지도 유지"
+ },
+ "✗ 不要放大": {
+  "en": "✗ Don't enlarge",
+  "ja": "✗ 拡大しない",
+  "ko": "✗ 확대하지 않기"
+ },
+ "地图放大了，按小地图旁边的「−」缩回来": {
+  "en": "If the map is enlarged, press the \"−\" beside it to shrink it back",
+  "ja": "拡大した場合はマップ横の「−」で戻す",
+  "ko": "지도가 커졌다면 옆의 「−」를 눌러 줄이기"
+ },
+ "战场角色设定": {
+  "en": "Battlefield character setting",
+  "ja": "戦場キャラクター設定",
+  "ko": "전장 캐릭터 설정"
+ },
+ "重要": {
+  "en": "Important",
+  "ja": "重要",
+  "ko": "중요"
+ },
+ "点画面最下面中间的按钮": {
+  "en": "Click the middle button at the bottom of the screen",
+  "ja": "画面最下部の真ん中のボタンを押す",
+  "ko": "화면 맨 아래 가운데 버튼을 클릭"
+ },
+ "「天赋技能使用角色设置」一定要选右边的「战场角色」": {
+  "en": "Under the talent-skill character setting, always pick the right option, \"battlefield character\"",
+  "ja": "タレントスキル使用キャラ設定は必ず右の「戦場キャラクター」を選ぶ",
+  "ko": "탤런트 스킬 사용 캐릭터 설정은 반드시 오른쪽 「전장 캐릭터」를 선택"
+ },
+ "上面的阵形选哪个都可以": {
+  "en": "Any formation above is fine",
+  "ja": "上の編成はどれでも可",
+  "ko": "위의 진형은 아무거나 괜찮음"
+ },
+ "必看": {
+  "en": "Read me",
+  "ja": "必読",
+  "ko": "필독"
+ },
+ "先在游戏里把要买的商品加入收藏": {
+  "en": "First add the items to buy to Favorites in the game",
+  "ja": "先にゲーム内で買う商品をお気に入りに追加",
+  "ko": "먼저 게임에서 살 상품을 즐겨찾기에 추가"
+ },
+ "工具只买「收藏」里的商品": {
+  "en": "The tool buys only Favorite items",
+  "ja": "ツールはお気に入りの商品だけを買います",
+  "ko": "도구는 즐겨찾기한 상품만 삽니다"
+ },
+ "只卖出售日历里当天勾选的商品": {
+  "en": "Sells only the items ticked for that day in the sale calendar",
+  "ja": "販売カレンダーでその日にチェックした商品だけを売ります",
+  "ko": "판매 달력에서 그날 체크한 상품만 팝니다"
+ },
+ "标「留」的商品会留下那个数量，其余卖掉": {
+  "en": "Items marked \"Keep\" keep that many; the rest are sold",
+  "ja": "「残し」付きの商品はその数を残し、残りを売ります",
+  "ko": "「보유」 표시 상품은 그 수량을 남기고 나머지를 팝니다"
+ },
+ "等待截图": {
+  "en": "Waiting for a screenshot",
+  "ja": "スクリーンショット待ち",
+  "ko": "스크린샷 대기 중"
+ },
+ "等待选择窗口": {
+  "en": "Waiting for a window to be chosen",
+  "ja": "ウィンドウの選択待ち",
+  "ko": "창 선택 대기 중"
+ },
+ "截图超时，正在重试": {
+  "en": "Screenshot timed out, retrying",
+  "ja": "スクリーンショットがタイムアウトしました。再試行中",
+  "ko": "스크린샷 시간 초과, 다시 시도 중"
+ },
+ "截图失败：{error}": {
+  "en": "Screenshot failed: {error}",
+  "ja": "スクリーンショット失敗：{error}",
+  "ko": "스크린샷 실패: {error}"
+ },
+ "设备管理未就绪": {
+  "en": "Device manager not ready",
+  "ja": "デバイス管理の準備ができていません",
+  "ko": "장치 관리가 준비되지 않음"
+ },
+ "等待选择截图方式": {
+  "en": "Waiting for a capture method to be chosen",
+  "ja": "キャプチャ方式の選択待ち",
+  "ko": "캡처 방식 선택 대기 중"
+ },
+ "截图方式未连接": {
+  "en": "Capture method not connected",
+  "ja": "キャプチャ方式が未接続",
+  "ko": "캡처 방식이 연결되지 않음"
+ },
+ "暂无截图": {
+  "en": "No screenshot yet",
+  "ja": "スクリーンショットはまだありません",
+  "ko": "아직 스크린샷 없음"
+ },
+ "任务正在运行，请先暂停任务再调整分辨率。": {
+  "en": "A task is running. Pause it before changing the size.",
+  "ja": "タスクの実行中です。サイズを変更する前に一時停止してください。",
+  "ko": "작업이 실행 중입니다. 크기를 바꾸기 전에 일시 정지하세요."
+ },
+ "调整已取消。": {
+  "en": "Resize cancelled.",
+  "ja": "調整をキャンセルしました。",
+  "ko": "조정을 취소했습니다."
+ },
+ "当前显示器无法容纳 {size} 游戏客户区。": {
+  "en": "This monitor can't fit a {size} game window.",
+  "ja": "このモニターには {size} のゲーム画面が収まりません。",
+  "ko": "이 모니터에는 {size} 게임 화면이 들어가지 않습니다."
+ },
+ "不支持的目标分辨率：{size}。": {
+  "en": "Unsupported size: {size}.",
+  "ja": "対応していないサイズです：{size}。",
+  "ko": "지원하지 않는 크기: {size}."
+ },
+ "请先在首页选择并连接 PC 游戏窗口。": {
+  "en": "Choose and connect the PC game window on Home first.",
+  "ja": "先にホームで PC 版のゲームウィンドウを選んで接続してください。",
+  "ko": "먼저 홈에서 PC 게임 창을 선택해 연결하세요."
+ },
+ "游戏窗口管理器尚未就绪，请先刷新窗口列表。": {
+  "en": "The game window manager isn't ready. Refresh the window list first.",
+  "ja": "ゲームウィンドウの管理がまだ準備できていません。先にウィンドウ一覧を更新してください。",
+  "ko": "게임 창 관리가 아직 준비되지 않았습니다. 먼저 창 목록을 새로 고치세요."
+ },
+ "当前游戏窗口已失效，请刷新后重新选择。": {
+  "en": "The game window is no longer valid. Refresh and choose it again.",
+  "ja": "ゲームウィンドウが無効になりました。更新して選び直してください。",
+  "ko": "게임 창이 더 이상 유효하지 않습니다. 새로 고친 뒤 다시 선택하세요."
+ },
+ "游戏窗口已最小化，请先恢复窗口。": {
+  "en": "The game window is minimized. Restore it first.",
+  "ja": "ゲームウィンドウが最小化されています。先に元に戻してください。",
+  "ko": "게임 창이 최소화되어 있습니다. 먼저 창을 복원하세요."
+ },
+ "游戏窗口无法退出最大化状态，请先手动还原窗口。": {
+  "en": "The game window won't leave maximized. Restore it by hand first.",
+  "ja": "ゲームウィンドウの最大化を解除できません。先に手動で元に戻してください。",
+  "ko": "게임 창의 최대화를 해제할 수 없습니다. 먼저 직접 창을 복원하세요."
+ },
+ "窗口没有稳定到目标分辨率，当前客户区为 {size}。": {
+  "en": "The window didn't settle at the target size; it is now {size}.",
+  "ja": "ウィンドウが目標サイズで安定しませんでした。現在は {size} です。",
+  "ko": "창이 목표 크기로 안정되지 않았습니다. 현재 {size}입니다."
+ },
+ "上一次调整仍在等待系统调用结束，请稍后重试。": {
+  "en": "The last resize is still waiting on Windows. Try again shortly.",
+  "ja": "前回の調整がまだ Windows の処理待ちです。少し待ってから再試行してください。",
+  "ko": "이전 조정이 아직 Windows 처리를 기다리고 있습니다. 잠시 후 다시 시도하세요."
+ },
+ "设备管理器尚未就绪。": {
+  "en": "Device manager not ready.",
+  "ja": "デバイス管理の準備ができていません。",
+  "ko": "장치 관리가 준비되지 않았습니다."
+ },
+ "正在调整到 {size}…": {
+  "en": "Resizing to {size}…",
+  "ja": "{size} に調整中…",
+  "ko": "{size}(으)로 조정 중…"
+ },
+ "（尺寸已是目标值）": {
+  "en": " (already this size)",
+  "ja": "（すでにこのサイズ）",
+  "ko": " (이미 이 크기)"
+ },
+ "当前游戏窗口：{size}": {
+  "en": "Game window: {size}",
+  "ja": "ゲームウィンドウ：{size}",
+  "ko": "게임 창: {size}"
+ },
+ "游戏窗口已调整为 {size}。": {
+  "en": "Game window resized to {size}.",
+  "ja": "ゲームウィンドウを {size} に調整しました。",
+  "ko": "게임 창을 {size}(으)로 조정했습니다."
+ },
+ "系统窗口调用超时，已停止后续步骤；请稍后重试。": {
+  "en": "Windows took too long; stopped here. Try again shortly.",
+  "ja": "Windows の応答がタイムアウトしたため中止しました。少し待ってから再試行してください。",
+  "ko": "Windows 응답 시간이 초과되어 중지했습니다. 잠시 후 다시 시도하세요."
+ },
+ "调整失败：{error}": {
+  "en": "Resize failed: {error}",
+  "ja": "調整に失敗：{error}",
+  "ko": "조정 실패: {error}"
+ },
+ "手动调整分辨率失败：{error}": {
+  "en": "Resizing the game window failed: {error}",
+  "ja": "ゲームウィンドウの調整に失敗しました：{error}",
+  "ko": "게임 창 크기 조정 실패: {error}"
+ },
+ "找不到这个任务，请重开工具再试": {
+  "en": "Can't find this task. Reopen the tool and try again.",
+  "ja": "このタスクが見つかりません。ツールを開き直して再試行してください",
+  "ko": "이 작업을 찾을 수 없습니다. 도구를 다시 열고 시도하세요"
+ },
+ "其他任务": {
+  "en": "Another task",
+  "ja": "別のタスク",
+  "ko": "다른 작업"
+ },
+ "「{name}」还在执行，等它结束或先按停止再开始": {
+  "en": "\"{name}\" is still running. Wait for it to end, or press Stop first.",
+  "ja": "「{name}」がまだ実行中です。終わるのを待つか、先に停止を押してください",
+  "ko": "‘{name}’이(가) 아직 실행 중입니다. 끝날 때까지 기다리거나 먼저 정지를 누르세요"
+ },
+ "工具正在桌面分身里跑，要在这里跑请先按停止": {
+  "en": "The tool is running on the Clone Desktop. Press Stop first to run here.",
+  "ja": "ツールは分身デスクトップで実行中です。ここで実行するには先に停止を押してください",
+  "ko": "도구가 분신 데스크톱에서 실행 중입니다. 여기서 실행하려면 먼저 정지를 누르세요"
+ },
+ "开始失败：{error}": {
+  "en": "Couldn't start: {error}",
+  "ja": "開始できませんでした：{error}",
+  "ko": "시작 실패: {error}"
+ },
+ "没有开始": {
+  "en": "Not started",
+  "ja": "開始しませんでした",
+  "ko": "시작하지 않음"
+ },
+ "工具已经在分身里开始跑，这里可以看进度和报告": {
+  "en": "The tool has started on the Clone Desktop. Follow progress and reports here.",
+  "ja": "ツールが分身デスクトップで実行を始めました。進行状況とレポートはここで見られます",
+  "ko": "도구가 분신 데스크톱에서 실행을 시작했습니다. 진행 상황과 리포트는 여기서 볼 수 있습니다"
+ },
+ "分身里没能自动打开工具（{reason}），请在分身里自己打开": {
+  "en": "Couldn't open the tool on the Clone Desktop ({reason}). Open it there yourself.",
+  "ja": "分身デスクトップでツールを自動で開けませんでした（{reason}）。分身デスクトップで手動で開いてください",
+  "ko": "분신 데스크톱에서 도구를 자동으로 열지 못했습니다({reason}). 분신 데스크톱에서 직접 여세요"
+ },
+ "• 纯后台执行：游戏在独立的分身窗口里跑，缩小也照跑\n• 照常用电脑，鼠标键盘不会被抢": {
+  "en": "• Fully in the background: the game runs in its own clone window, even minimized\n• Keep using your PC; the mouse and keyboard stay yours",
+  "ja": "• 完全バックグラウンド：ゲームは専用の分身ウィンドウで動き、最小化しても続行\n• いつも通り PC を使えます。マウスとキーボードは奪われません",
+  "ko": "• 완전 백그라운드: 게임이 별도의 분신 창에서 실행되며 최소화해도 계속 진행\n• 평소처럼 PC를 사용할 수 있고 마우스와 키보드를 빼앗기지 않음"
+ },
+ "第一次要先设定：\n• 会跳出 Windows 确认，请按「是」\n• 设定好后再按一次这个按钮": {
+  "en": "First, a one-time setup:\n• Windows will ask to confirm; click \"Yes\"\n• When it's done, press this button again",
+  "ja": "最初に一度だけ設定が必要です：\n• Windows の確認が出たら「はい」を押す\n• 設定が終わったら、もう一度このボタンを押す",
+  "ko": "처음에 한 번 설정이 필요합니다:\n• Windows 확인 창이 뜨면 ‘예’를 누르세요\n• 설정이 끝나면 이 버튼을 다시 누르세요"
+ },
+ "要先改一个登录设定：\n• 分身要用密码登录，现在只允许 PIN／脸\n• 在「登录选项」关掉「只允许 Windows Hello 登录」\n• 改好后再按一次这个按钮": {
+  "en": "One sign-in setting must change first:\n• The clone signs in with a password; right now only PIN/face is allowed\n• In \"Sign-in options\", turn off \"Only allow Windows Hello sign-in\"\n• Then press this button again",
+  "ja": "先にサインイン設定を 1 つ変更してください：\n• 分身はパスワードでサインインしますが、今は PIN／顔認証のみ許可されています\n• 「サインイン オプション」で「Windows Hello サインインのみを許可する」をオフにする\n• 変更したら、もう一度このボタンを押す",
+  "ko": "먼저 로그인 설정 하나를 바꿔야 합니다:\n• 분신은 비밀번호로 로그인하는데 지금은 PIN/얼굴만 허용됨\n• ‘로그인 옵션’에서 ‘Windows Hello 로그인만 허용’을 끄세요\n• 바꾼 뒤 이 버튼을 다시 누르세요"
+ },
+ "按「前往」后：\n• Windows 确认请按「是」\n• 第一次要打账户密码（不是 PIN），之后会记住\n• 游戏和日常自动开始，进度在这里看": {
+  "en": "After you press \"Go\":\n• Click \"Yes\" when Windows asks to confirm\n• The first time, type your account password (not the PIN); it's remembered after that\n• The game and dailies start by themselves; follow progress here",
+  "ja": "「進む」を押した後：\n• Windows の確認では「はい」を押す\n• 初回はアカウントのパスワード（PIN ではない）を入力。次回からは記憶されます\n• ゲームとデイリーが自動で始まり、進行状況はここで見られます",
+  "ko": "‘이동’을 누른 뒤:\n• Windows 확인 창에서 ‘예’를 누르세요\n• 처음에는 계정 비밀번호(PIN 아님)를 입력하며 이후에는 기억됨\n• 게임과 일일 콘텐츠가 자동으로 시작되고 진행 상황은 여기서 확인"
+ },
+ "交给桌面分身里的工具跑，进度在这里看": {
+  "en": "Handed to the tool on the Clone Desktop; follow progress here",
+  "ja": "分身デスクトップのツールに任せました。進行状況はここで見られます",
+  "ko": "분신 데스크톱의 도구에 넘겼습니다. 진행 상황은 여기서 확인하세요"
+ },
+ "分身里现在没在跑任务，但分身还开着。\n要在这里跑，得先关掉分身（分身里的游戏和工具会一起关）。": {
+  "en": "Nothing is running on the Clone Desktop, but it is still open.\nTo run here, close it first (its game and tool close with it).",
+  "ja": "分身デスクトップでは何も実行していませんが、まだ開いています。\nここで実行するには先に閉じてください（分身のゲームとツールも一緒に閉じます）。",
+  "ko": "분신 데스크톱에서 실행 중인 작업은 없지만 아직 열려 있습니다.\n여기서 실행하려면 먼저 닫아야 합니다(분신의 게임과 도구도 함께 닫힘)."
+ },
+ "桌面分身还开着": {
+  "en": "The Clone Desktop is still open",
+  "ja": "分身デスクトップがまだ開いています",
+  "ko": "분신 데스크톱이 아직 열려 있음"
+ },
+ "关掉分身并开始": {
+  "en": "Close it and start",
+  "ja": "分身を閉じて開始",
+  "ko": "분신을 닫고 시작"
+ },
+ "分身里刚开始跑任务，这里先不开始": {
+  "en": "A run just started on the Clone Desktop, so nothing starts here",
+  "ja": "分身デスクトップで実行が始まったため、ここでは開始しません",
+  "ko": "분신 데스크톱에서 방금 실행이 시작되어 여기서는 시작하지 않습니다"
+ },
+ "没能关掉分身，请在分身窗口按右上角的 X 关掉再开始": {
+  "en": "Couldn't close the Clone Desktop. Close it with the X at the top right of its window, then start.",
+  "ja": "分身デスクトップを閉じられませんでした。分身ウィンドウ右上の X で閉じてから開始してください",
+  "ko": "분신 데스크톱을 닫지 못했습니다. 분신 창 오른쪽 위의 X로 닫은 뒤 시작하세요"
+ },
+ "桌面分身还没设定好，请先到「设置」按「第一次设定」": {
+  "en": "The Clone Desktop isn't set up yet. Go to Settings and press \"First-time setup\".",
+  "ja": "分身デスクトップがまだ設定されていません。「設定」で「初回設定」を押してください",
+  "ko": "분신 데스크톱이 아직 설정되지 않았습니다. ‘설정’에서 ‘처음 설정’을 누르세요"
+ },
+ "没有打开分身（Windows 的确认按了「否」）": {
+  "en": "The Clone Desktop didn't open (\"No\" was clicked in the Windows prompt)",
+  "ja": "分身デスクトップを開きませんでした（Windows の確認で「いいえ」が押されました）",
+  "ko": "분신 데스크톱을 열지 않았습니다(Windows 확인 창에서 ‘아니요’를 누름)"
+ },
+ "等待自动登录完成": {
+  "en": "Waiting for the automatic sign-in",
+  "ja": "自動ログインの完了待ち",
+  "ko": "자동 로그인 완료 대기 중"
+ },
+ "桌面分身": {
+  "en": "Clone Desktop",
+  "ja": "分身デスクトップ",
+  "ko": "분신 데스크톱"
+ },
+ "日常的结果": {
+  "en": "Dailies results",
+  "ja": "デイリーの結果",
+  "ko": "일일 결과"
+ },
+ "周常的结果": {
+  "en": "Weeklies results",
+  "ja": "ウィークリーの結果",
+  "ko": "주간 결과"
+ },
+ "日常": {
+  "en": "Dailies",
+  "ja": "デイリー",
+  "ko": "일일"
+ },
+ "单独执行": {
+  "en": "On its own",
+  "ja": "単独実行",
+  "ko": "단독 실행"
+ },
+ "勾选：一键完成日常会跑这项": {
+  "en": "Ticked: Run All Dailies runs this item",
+  "ja": "チェック：デイリー一括実行でこの項目を実行",
+  "ko": "체크: 일일 일괄 실행에서 이 항목을 실행"
+ },
+ "看今日报表": {
+  "en": "See today's report",
+  "ja": "今日のレポートを見る",
+  "ko": "오늘 리포트 보기"
+ },
+ "今日报表": {
+  "en": "Today's Report",
+  "ja": "今日のレポート",
+  "ko": "오늘 리포트"
+ },
+ "工具正在桌面分身里跑，这里会跟着更新": {
+  "en": "The tool is running on the Clone Desktop; this page follows along",
+  "ja": "ツールは分身デスクトップで実行中です。この画面も合わせて更新されます",
+  "ko": "도구가 분신 데스크톱에서 실행 중이며 이 화면도 함께 갱신됩니다"
+ },
+ "项 · 最后 {time}": {
+  "en": "items · last {time}",
+  "ja": "項目 · 最終 {time}",
+  "ko": "개 항목 · 마지막 {time}"
+ },
+ "完成 {done} 项 · 失败 {failed} 项 · 点这里看全部": {
+  "en": "{done} done · {failed} failed · click to see all",
+  "ja": "完了 {done} 件 · 失敗 {failed} 件 · クリックですべて表示",
+  "ko": "완료 {done}개 · 실패 {failed}개 · 클릭해서 전체 보기"
+ },
+ "跑完会在这里看到今天的结果": {
+  "en": "Today's results show up here after a run",
+  "ja": "実行が終わると、今日の結果がここに表示されます",
+  "ko": "실행이 끝나면 오늘의 결과가 여기에 표시됩니다"
+ },
+ "加入一键完成日常": {
+  "en": "Include in Run All Dailies",
+  "ja": "デイリー一括実行に含める",
+  "ko": "일일 일괄 실행에 포함"
+ },
+ "跑了 {n} 次": {
+  "en": "Ran {n} times",
+  "ja": "{n} 回実行",
+  "ko": "{n}회 실행"
+ },
+ "跑过的项目": {
+  "en": "Items run",
+  "ja": "実行した項目",
+  "ko": "실행한 항목"
+ },
+ "执行次数": {
+  "en": "Runs",
+  "ja": "実行回数",
+  "ko": "실행 횟수"
+ },
+ "今天还没跑过任务": {
+  "en": "Nothing has run today",
+  "ja": "今日はまだ何も実行していません",
+  "ko": "오늘은 아직 실행한 작업이 없습니다"
+ },
+ "每次跑完（一键日常、周常或单独执行）都会记在这里。": {
+  "en": "Every run (Run All Dailies, Weeklies or a single item) is recorded here.",
+  "ja": "実行するたび（デイリー一括実行、ウィークリー、単独実行）にここへ記録されます。",
+  "ko": "실행할 때마다(일일 일괄 실행, 주간, 단독 실행) 여기에 기록됩니다."
+ },
+ "{task} · 点图看大图": {
+  "en": "{task} · click a picture to enlarge",
+  "ja": "{task} · 画像をクリックで拡大",
+  "ko": "{task} · 이미지를 클릭하면 크게 보기"
+ },
+ "颜色、语言、通知和工具": {
+  "en": "Colors, language, notifications and tools",
+  "ja": "カラー、言語、通知、ツール",
+  "ko": "색상, 언어, 알림, 도구"
+ },
+ "跑完、出错时在 Windows 右下角跳出通知": {
+  "en": "Show a notification at the bottom right of Windows when a run ends or fails",
+  "ja": "実行の完了時やエラー時に Windows の右下に通知を表示",
+  "ko": "실행이 끝나거나 오류가 나면 Windows 오른쪽 아래에 알림 표시"
+ },
+ "关掉弹窗、按返回，把游戏带回主页（卡住时用）": {
+  "en": "Closes popups and presses Back to bring the game to Home (use when stuck)",
+  "ja": "ポップアップを閉じて戻るを押し、ゲームをホームに戻す（詰まったとき用）",
+  "ko": "팝업을 닫고 뒤로 가기를 눌러 게임을 메인 화면으로 되돌림(막혔을 때 사용)"
+ },
+ "还原桌面分身": {
+  "en": "Undo Clone Desktop setup",
+  "ja": "分身デスクトップを元に戻す",
+  "ko": "분신 데스크톱 되돌리기"
+ },
+ "把第一次设定改的 Windows 设定全部改回去": {
+  "en": "Puts back every Windows setting the first-time setup changed",
+  "ja": "初回設定で変更した Windows の設定をすべて元に戻す",
+  "ko": "처음 설정에서 바꾼 Windows 설정을 모두 되돌림"
+ },
+ "还原": {
+  "en": "Undo",
+  "ja": "元に戻す",
+  "ko": "되돌리기"
+ },
+ "要把桌面分身的设定改回去吗？分身里的游戏和工具会被关掉。": {
+  "en": "Undo the Clone Desktop settings? The game and tool on the Clone Desktop will be closed.",
+  "ja": "分身デスクトップの設定を元に戻しますか？分身のゲームとツールは閉じられます。",
+  "ko": "분신 데스크톱 설정을 되돌릴까요? 분신의 게임과 도구가 닫힙니다."
+ },
+ "魔兽追踪者": {
+  "en": "Fiend Hunter",
+  "ja": "魔獣追跡者",
+  "ko": "마물 추적자"
+ },
+ "桌面分身：这次由工具自动登录。": {
+  "en": "Clone Desktop: the tool signs in this time.",
+  "ja": "分身デスクトップ：今回はツールが自動ログインします。",
+  "ko": "분신 데스크톱: 이번에는 도구가 자동 로그인합니다."
+ }
+}

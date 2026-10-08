@@ -1,0 +1,16 @@
+src
+ok
+main.py
+main_debug.py
+icons
+requirements.txt
+README.md
+LICENSE
+LICENSES
+THIRD_PARTY_NOTICES.md
+i18n
+pyappify
+assets
+ok_templates
+recognition-assets/template-assets
+pyappify.yml

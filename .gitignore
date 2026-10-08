@@ -1,0 +1,91 @@
+# Local secrets and runtime data
+/AGENTS.md
+/CLAUDE.md
+# 代码质量优化计划：本地辅助文档（2026-09-06 用户决定不入库）
+/docs/code-quality-optimization-plan.md
+/.agents/
+/intro/
+my_key.txt
+pyappify_build/
+pyappify_dist/
+pyappify-*.log
+pyappify-*.pid
+vs-buildtools-install.*
+/config/
+configs/
+screenshots/
+logs/
+working/
+updates/
+update/
+data/
+!src/tasks/fiend_hunt/data/
+data_export/
+data_import/
+click_screenshots/
+probe_outputs/
+thread_dumps.txt
+upstream/
+
+# Internal AI handoff notes and local-only archives (keep in .local-dev/)
+/docs/handoff/
+/output/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+.venv/
+venv/
+python/
+*.egg-info/
+.eggs/
+build/
+dist/
+wheels/
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+htmlcov/
+.coverage
+
+# IDE
+.idea/
+.vscode/
+
+# ok-script local/generated assets
+/cache/
+ok/
+ok
+ok_tasks/
+ok_import/
+custom_chars/
+temp_images/
+working_images/
+paddle_model/
+models/
+/fonts/
+*.msgpack
+*.dat
+md5.txt
+update.bat
+
+# Tests
+tests/.tmp/
+/scripts/test_quick_switch_templates.py
+/tmp/
+
+# OS
+Thumbs.db
+Desktop.ini
+
+# Local media/debug captures
+*.mp4
+*.avi
+*.mov
+/recognition-assets/template-assets/QQ????????-??????.png
+/recognition-assets/template-assets/*.mp4_*.png
+.local-dev/
+# Leo's tool settings snapshot for moving to another PC
+!/docs/dev-notes/configs/
