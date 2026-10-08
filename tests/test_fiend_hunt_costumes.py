@@ -120,10 +120,13 @@ class TemporaryCostumeTest(unittest.TestCase):
         self.assertEqual(other.name, found[4].name)
 
     def test_picture_falls_back_to_the_original_costume(self):
-        book = costumes.book()
-        character = next(c for c in book.characters if c.name == "内肯达莉亚")
-        new = next(c for c in book.costumes("内肯达莉亚") if c.temporary)
-        self.assertEqual(character.costume, book.picture_id("内肯达莉亚", new.id))
+        # its own temporary costume: the shipped list's are replaced once
+        # souseha lists them (殘破木乃伊, 2026-10-08)
+        character = costumes.Character("克蕾西亚", costume=self.alice.id)
+        book = costumes.CharacterBook(
+            {"克蕾西亚": (self.alice, self.new)}, characters=(character,)
+        )
+        self.assertEqual(self.alice.id, book.picture_id("克蕾西亚", self.new.id))
 
     def test_an_alias_finds_the_costume_that_replaced_it(self):
         book = costumes.CharacterBook(
