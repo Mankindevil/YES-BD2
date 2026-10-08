@@ -1,3 +1,4 @@
+import os
 import subprocess
 import tempfile
 import unittest
@@ -157,41 +158,65 @@ class BuildWorkflowTest(unittest.TestCase):
             self.workflow,
         )
 
-    def test_release_notes_fall_back_to_previous_tag_when_sync_start_is_empty(self):
+    def _release_notes(self, tags_and_titles, release_tag, start_tag=""):
+        """Run prepare_release_notes.ps1 in a throwaway repository whose
+        commits carry the given titles and tags (None = untagged)."""
         script = ROOT / "scripts" / "prepare_release_notes.ps1"
-        with tempfile.TemporaryDirectory(dir=ROOT) as temporary_directory:
-            output_name = "release-notes.md"
-            output_path = Path(temporary_directory) / output_name
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            repo = Path(temporary_directory)
+            env = {key: value for key, value in os.environ.items() if key != "GH_TOKEN"}
+
+            def git(*args):
+                subprocess.run(
+                    ["git", *args], cwd=repo, env=env, check=True,
+                    capture_output=True, text=True, encoding="utf-8",
+                )
+
+            git("init", "--quiet")
+            git("config", "user.name", "test")
+            git("config", "user.email", "test@example.com")
+            for index, (title, tag) in enumerate(tags_and_titles):
+                (repo / "file.txt").write_text(str(index), encoding="utf-8")
+                git("add", "file.txt")
+                git("commit", "--quiet", "-m", title)
+                if tag:
+                    git("tag", "-a", tag, "-m", tag)
             result = subprocess.run(
                 [
-                    "pwsh",
-                    "-NoProfile",
-                    "-File",
-                    str(script),
-                    "-StartTag",
-                    "",
-                    "-EndTag",
-                    "v1.1.2",
-                    "-Changelog",
-                    "* release: v1.1.2",
-                    "-ReleaseTag",
-                    "v1.1.2",
-                    "-OutputPath",
-                    str(Path(Path(temporary_directory).name) / output_name),
+                    "pwsh", "-NoProfile", "-File", str(script),
+                    "-StartTag", start_tag,
+                    "-EndTag", release_tag,
+                    "-Changelog", "",
+                    "-ReleaseTag", release_tag,
+                    "-OutputPath", "release-notes.md",
                 ],
-                cwd=ROOT,
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                check=False,
+                cwd=repo, env=env, capture_output=True, text=True,
+                encoding="utf-8", errors="replace", check=False,
             )
-
             self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertIn(
-                "### 更新日志 v1.1.1 -> v1.1.2",
-                output_path.read_text(encoding="utf-8-sig"),
-            )
+            return (repo / "release-notes.md").read_text(encoding="utf-8-sig")
+
+    def test_release_notes_for_the_first_release(self):
+        notes = self._release_notes([("YES-BD2", "v0.1.1")], "v0.1.1")
+
+        self.assertIn("## YES-BD2 v0.1.1", notes)
+        self.assertIn("第一个公开版本", notes)
+        self.assertIn("releases/download/v0.1.1/yes-bd2-win32-Full-setup.exe", notes)
+
+    def test_release_notes_list_the_changes_since_the_previous_tag(self):
+        notes = self._release_notes(
+            [
+                ("YES-BD2", "v0.1.1"),
+                ("修好跑商", None),
+                ("魔獸戰加快", "v0.1.2"),
+            ],
+            "v0.1.2",
+        )
+
+        self.assertIn("### 更新内容 v0.1.1 -> v0.1.2", notes)
+        self.assertIn("- 修好跑商", notes)
+        self.assertIn("- 魔獸戰加快", notes)
+        self.assertNotIn("- YES-BD2", notes)
 
 
 if __name__ == "__main__":

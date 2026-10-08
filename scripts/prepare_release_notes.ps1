@@ -1,9 +1,7 @@
 param(
     [string]$StartTag = "",
-    [Parameter(Mandatory = $true)]
-    [string]$EndTag,
-    [Parameter(Mandatory = $true)]
-    [string]$Changelog,
+    [string]$EndTag = "",
+    [string]$Changelog = "",
     [Parameter(Mandatory = $true)]
     [string]$ReleaseTag,
     [string]$OutputPath = "release-notes.md"
@@ -11,81 +9,73 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$releaseCommit = git rev-list -n 1 $ReleaseTag
+# YES-BD2 releases are tags that scripts/sync_public.py puts on the synced
+# snapshot commits; each commit title is the name of one merged change.
+$releaseCommit = git rev-list -n 1 $ReleaseTag 2>$null
 if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($releaseCommit)) {
     throw "Could not resolve release tag $ReleaseTag."
 }
-$releaseSubject = git log -1 --format=%s $releaseCommit
-$expectedSubject = "release: $ReleaseTag"
-if ($releaseSubject -ne $expectedSubject) {
-    throw "Tag $ReleaseTag must point to '$expectedSubject', got '$releaseSubject'."
+$releaseCommit = "$releaseCommit".Trim()
+
+function Test-PublishedRelease([string]$Tag) {
+    # A tag whose build failed has no release page; players never got it.
+    if (-not $env:GH_TOKEN -or -not (Get-Command gh -ErrorAction SilentlyContinue)) {
+        return $true
+    }
+    gh release view $Tag 2>$null | Out-Null
+    return $LASTEXITCODE -eq 0
 }
 
-$releaseAuthor = git log -1 --format=%an $releaseCommit
-$normalizedStartTag = $StartTag.Trim()
-if ([string]::IsNullOrWhiteSpace($normalizedStartTag)) {
-    $normalizedStartTag = (git describe --tags --abbrev=0 "$releaseCommit^" 2>$null).Trim()
-    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($normalizedStartTag)) {
-        throw "Could not resolve a starting tag for release $ReleaseTag."
+$previousTag = $StartTag.Trim()
+if ($previousTag -and -not (Test-PublishedRelease $previousTag)) {
+    $previousTag = ""
+}
+if ([string]::IsNullOrWhiteSpace($previousTag)) {
+    $candidate = "$releaseCommit^"
+    while ($true) {
+        $tag = git describe --tags --abbrev=0 $candidate 2>$null
+        if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($tag)) {
+            $previousTag = ""
+            break
+        }
+        $tag = "$tag".Trim()
+        if (Test-PublishedRelease $tag) {
+            $previousTag = $tag
+            break
+        }
+        $candidate = "$tag^"
     }
 }
+$global:LASTEXITCODE = 0
 
-$mainEntries = [System.Collections.Generic.List[string]]::new()
-$releaseDetails = @(git log -1 --format=%b $releaseCommit)
-$nonEmptyDetails = @(
-    foreach ($line in $releaseDetails) {
-        $entry = ($line -replace '^\s*[-*]\s+', '').Trim()
-        if (-not [string]::IsNullOrWhiteSpace($entry)) {
-            $entry
+$entries = [System.Collections.Generic.List[string]]::new()
+if ($previousTag) {
+    foreach ($subject in @(git log --format=%s "$previousTag..$releaseCommit")) {
+        $line = "$subject".Trim()
+        if ($line) {
+            $entries.Add("- $line")
         }
     }
-)
-$allConventional = $nonEmptyDetails.Count -gt 0
-foreach ($entry in $nonEmptyDetails) {
-    if ($entry -notmatch '^(feat|fix|refactor|perf|docs|test|build|ci|chore|style|revert)(\([^)]+\))?:\s+.+$') {
-        $allConventional = $false
-        break
+}
+if ($entries.Count -eq 0) {
+    foreach ($line in ($Changelog -split "`r?`n")) {
+        $line = ($line -replace '^\s*[-*]\s+', '').Trim()
+        if ($line) {
+            $entries.Add("- $line")
+        }
     }
-}
-
-if (-not $allConventional -and $nonEmptyDetails.Count -gt 0) {
-    $freeformEntry = ($nonEmptyDetails -join ' ') -replace '\s+', ' '
-    $mainEntries.Add("- $freeformEntry ($releaseAuthor)")
-} else {
-    foreach ($entry in $nonEmptyDetails) {
-        if ([string]::IsNullOrWhiteSpace($entry)) {
-            continue
-        }
-        if ($entry -notmatch '^(feat|fix|refactor|perf|docs|test|build|ci|chore|style|revert)(\([^)]+\))?:\s+.+$') {
-            throw "Release detail must use Conventional Commits format: $entry"
-        }
-        if ($entry -notmatch '\s+\([^)]+\)$') {
-            $entry = "$entry ($releaseAuthor)"
-        }
-        $mainEntries.Add("- $entry")
-    }
-}
-if ($mainEntries.Count -eq 0) {
-    throw "Release commit $releaseCommit has no version details."
-}
-
-$normalizedChangelog = $Changelog.Trim()
-if ([string]::IsNullOrWhiteSpace($normalizedChangelog)) {
-    throw "The synchronized changelog is empty."
 }
 
 $releaseNotes = @(
-    if ($nonEmptyDetails[0] -match '^[a-z]+(?:\([^)]+\))?:\s+(\*\*.+\*\*)$') {
-        "## $($Matches[1])"
+    "## YES-BD2 $ReleaseTag"
+    ""
+    if ($previousTag) {
+        "### 更新内容 $previousTag -> $ReleaseTag"
         ""
+        if ($entries.Count -gt 0) { $entries -join "`n" } else { "- 小修正" }
+    } else {
+        "第一个公开版本。"
     }
-    "### 更新日志 $normalizedStartTag -> $EndTag"
-    ""
-    $normalizedChangelog
-    ""
-    "### 版本主要内容 ${ReleaseTag}："
-    ""
-    ($mainEntries -join "`n")
     ""
     "### 下载包说明"
     ""

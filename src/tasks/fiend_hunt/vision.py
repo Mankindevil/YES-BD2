@@ -19,7 +19,7 @@ import numpy as np
 
 from src.tasks.fiend_hunt import layout
 from src.tasks.fiend_hunt.planner import COLS, ROWS, Cell
-from src.utils.image_utils import template_match_response, to_gray
+from src.utils.image_utils import correlation_response, template_match_response, to_gray
 
 Ocr = Callable[[np.ndarray], Sequence[str]]
 
@@ -478,7 +478,7 @@ def grid_on_screen(frame: np.ndarray) -> Grid | None:
         brackets = _grid_brackets(scale)
         if brackets.shape[0] > bright.shape[0] or brackets.shape[1] > bright.shape[1]:
             continue
-        scores = cv2.matchTemplate(bright, brackets, cv2.TM_CCORR_NORMED)
+        scores = correlation_response(bright, brackets)
         _, score, _, (x, y) = cv2.minMaxLoc(scores)
         if score > best[0]:
             best = (score, (scale, x, y))

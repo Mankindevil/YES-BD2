@@ -264,6 +264,16 @@ def template_match_response(
     return sanitize_template_response(response)
 
 
+def correlation_response(search: np.ndarray, template: np.ndarray) -> np.ndarray:
+    """Plain TM_CCORR_NORMED without a mask (no mean removal), sanitized.
+
+    For binary shape masks, such as the 魔獸 grid's corner brackets, where
+    a dark search area must not score."""
+
+    response = cv2.matchTemplate(search, template, cv2.TM_CCORR_NORMED)
+    return sanitize_template_response(response)
+
+
 def candidate_scales(
     base_scale: float,
     scale_ratios: Iterable[float] = (1.0,),

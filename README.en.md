@@ -18,6 +18,8 @@
 </p>
 
 > [!IMPORTANT]
+> **For the PC (desktop app) version of Brown Dust 2 only**; phones and emulators are not supported.
+>
 > **Switch the game language to Simplified Chinese first.** The tool reads the text on the game screen, and for now it only reads Simplified Chinese. **More game languages are coming soon.**
 > The tool's own interface has 5 languages; change it under **Settings → Language** in the tool.
 
