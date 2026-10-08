@@ -79,8 +79,9 @@ $releaseNotes = @(
     ""
     "### 下载包说明"
     ""
-    "- [yes-bd2-win32-Full-setup.exe](https://github.com/nobell001/YES-BD2/releases/download/$ReleaseTag/yes-bd2-win32-Full-setup.exe) 完整安装包（推荐），打开工具时自动更新。"
-    "- [yes-bd2-win32-online-setup.exe](https://github.com/nobell001/YES-BD2/releases/download/$ReleaseTag/yes-bd2-win32-online-setup.exe) 在线安装包，首次安装时需要联网下载依赖。"
+    "- [yes-bd2-win32-online-setup.exe](https://github.com/nobell001/YES-BD2/releases/download/$ReleaseTag/yes-bd2-win32-online-setup.exe) 在线安装包（推荐，约 5 MB），安装时联网下载其余部分。"
+    "- [yes-bd2-win32-Full-setup.exe](https://github.com/nobell001/YES-BD2/releases/download/$ReleaseTag/yes-bd2-win32-Full-setup.exe) 完整离线安装包，文件很大，安装时不能联网才用。"
+    "- 两种装好后完全一样，打开工具时都会自动更新。"
     "- 不要下载 yes-bd2-win32.zip 或 Source code 压缩包。"
 ) -join "`n"
 

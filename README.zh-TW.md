@@ -53,7 +53,7 @@
 
 ## 三步開始
 
-1. 到 [Releases](https://github.com/nobell001/YES-BD2/releases/latest) 下載 **`yes-bd2-win32-Full-setup.exe`**，安裝。
+1. 到 [Releases](https://github.com/nobell001/YES-BD2/releases/latest) 下載 **`yes-bd2-win32-online-setup.exe`**（約 5 MB），安裝。安裝時會連網下載其餘部分，請保持網路連線。如果 Windows 跳出「已保護您的電腦」，按「其他資訊 → 仍要執行」（安裝檔沒有付費簽章，新發布的檔案都會這樣）。
 2. 把遊戲語言切成**簡體中文**，畫質選 FHD。
 3. 打開工具，按「**一鍵完成日常**」。遊戲沒開的話，工具會先問你要不要幫你開。
 
@@ -97,8 +97,8 @@
 
 | 檔案 | 說明 |
 |---|---|
-| `yes-bd2-win32-Full-setup.exe` | **選這個**。完整安裝，裝好就能用 |
-| `yes-bd2-win32-online-setup.exe` | 檔案最小，安裝時再下載其餘部分 |
+| `yes-bd2-win32-online-setup.exe` | **選這個**。約 5 MB，安裝時再連網下載其餘部分，通常比較快 |
+| `yes-bd2-win32-Full-setup.exe` | 完整離線安裝包，檔案很大；安裝時不能連網才用 |
 
 GitHub 自動附的 `Source code` 壓縮包和 `yes-bd2-win32.zip` 不是安裝包，一般玩家不用下載。
 

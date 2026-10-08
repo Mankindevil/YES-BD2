@@ -53,7 +53,7 @@
 
 ## 3 ステップで開始
 
-1. [Releases](https://github.com/nobell001/YES-BD2/releases/latest) から **`yes-bd2-win32-Full-setup.exe`** をダウンロードしてインストール。
+1. [Releases](https://github.com/nobell001/YES-BD2/releases/latest) から **`yes-bd2-win32-online-setup.exe`**（約 5 MB）をダウンロードしてインストール。インストール中に残りをダウンロードするので、ネットに接続したままにしてください。「Windows によって PC が保護されました」と出たら **詳細情報 → 実行** を押してください（インストーラーにコード署名がないため、新しいリリースではこの警告が出ます）。
 2. ゲームの言語を**簡体字中国語**に、画質を FHD にする。
 3. ツールを開いて **デイリー一括実行** を押す。ゲームが開いていなければ、起動するか確認されます。
 
@@ -99,8 +99,8 @@
 
 | ファイル | 説明 |
 |---|---|
-| `yes-bd2-win32-Full-setup.exe` | **これを選んでください**。完全版、インストールすればすぐ使えます |
-| `yes-bd2-win32-online-setup.exe` | 最小サイズ。残りはインストール中にダウンロード |
+| `yes-bd2-win32-online-setup.exe` | **これを選んでください**。約 5 MB。残りはインストール中にダウンロード、たいていこちらが速い |
+| `yes-bd2-win32-Full-setup.exe` | オフライン用の完全版。ファイルが大きいので、インストール中にネットにつなげない場合だけ |
 
 GitHub が自動で付ける `Source code` の圧縮ファイルと `yes-bd2-win32.zip` はインストーラーではないので、プレイヤーには不要です。
 

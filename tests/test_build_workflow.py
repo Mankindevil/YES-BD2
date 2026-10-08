@@ -112,6 +112,17 @@ class BuildWorkflowTest(unittest.TestCase):
         self.assertIn('icon: "icons/icon.png"', self.pyappify_config)
         self.assertTrue((ROOT / "icons" / "icon.png").is_file())
 
+    def test_launcher_links_point_to_yes_bd2(self):
+        script = (ROOT / "scripts" / "prepare_pyappify_launcher.ps1").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn(
+            'website: "https://github.com/nobell001/YES-BD2"', self.pyappify_config
+        )
+        self.assertIn(
+            '<Link href="https://github.com/nobell001/YES-BD2"', script
+        )
+
     def test_workflows_validate_uv_lock_and_exports(self):
         action = "astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b"
         for workflow in (self.workflow, self.test_workflow):

@@ -53,7 +53,7 @@
 
 ## 3단계로 시작
 
-1. [Releases](https://github.com/nobell001/YES-BD2/releases/latest)에서 **`yes-bd2-win32-Full-setup.exe`**를 받아 설치합니다.
+1. [Releases](https://github.com/nobell001/YES-BD2/releases/latest)에서 **`yes-bd2-win32-online-setup.exe`**(약 5 MB)를 받아 설치합니다. 설치 중에 나머지를 내려받으므로 인터넷에 연결해 두세요. "Windows의 PC 보호" 창이 뜨면 **추가 정보 → 실행**을 누르세요(설치 파일에 코드 서명이 없어 새 버전에서는 이 경고가 나옵니다).
 2. 게임 언어를 **중국어 간체**로, 그래픽을 FHD로 설정합니다.
 3. 도구를 열고 **일일 일괄 실행**을 누릅니다. 게임이 꺼져 있으면 켤지 먼저 물어봅니다.
 
@@ -99,8 +99,8 @@
 
 | 파일 | 설명 |
 |---|---|
-| `yes-bd2-win32-Full-setup.exe` | **이 파일을 고르세요**. 전체 설치 파일, 설치하면 바로 사용 |
-| `yes-bd2-win32-online-setup.exe` | 가장 작은 파일. 나머지는 설치 중에 내려받음 |
+| `yes-bd2-win32-online-setup.exe` | **이 파일을 고르세요**. 약 5 MB, 나머지는 설치 중에 내려받으며 보통 더 빠름 |
+| `yes-bd2-win32-Full-setup.exe` | 오프라인용 전체 설치 파일, 용량이 큼. 설치 중에 인터넷을 쓸 수 없을 때만 |
 
 GitHub가 자동으로 붙이는 `Source code` 압축 파일과 `yes-bd2-win32.zip`은 설치 파일이 아니므로 받지 않아도 됩니다.
 

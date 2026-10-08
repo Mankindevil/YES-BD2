@@ -53,7 +53,7 @@
 
 ## Start in three steps
 
-1. Download **`yes-bd2-win32-Full-setup.exe`** from [Releases](https://github.com/nobell001/YES-BD2/releases/latest) and install it.
+1. Download **`yes-bd2-win32-online-setup.exe`** (about 5 MB) from [Releases](https://github.com/nobell001/YES-BD2/releases/latest) and install it. It downloads the rest while installing, so stay online. If Windows shows "Windows protected your PC", click **More info → Run anyway** (the installer isn't code-signed, so new releases get this warning).
 2. Set the game language to **Simplified Chinese** and the graphics preset to FHD.
 3. Open the tool and press **Run All Dailies**. If the game isn't open, the tool asks whether to start it for you.
 
@@ -99,8 +99,8 @@ A screenshot of Today's Report helps most. It may show your in-game account deta
 
 | File | Notes |
 |---|---|
-| `yes-bd2-win32-Full-setup.exe` | **Pick this one.** Full installer, ready to use |
-| `yes-bd2-win32-online-setup.exe` | Smallest download; fetches the rest while installing |
+| `yes-bd2-win32-online-setup.exe` | **Pick this one.** About 5 MB; fetches the rest while installing, usually faster |
+| `yes-bd2-win32-Full-setup.exe` | Full offline installer, a large file; only if you can't be online while installing |
 
 The `Source code` archives GitHub adds and `yes-bd2-win32.zip` are not installers; players don't need them.
 

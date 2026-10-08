@@ -282,6 +282,20 @@ if ($viteConfig -notmatch 'base:\s*["'']\./["'']') {
     Set-Content -LiteralPath $viteConfigPath -Value $viteConfig -Encoding UTF8
 }
 
+# The launcher's footer linked to PyAppify's own repository; players read it
+# as the tool's page, so it points to YES-BD2 instead (Leo 10-08).
+$appTsxPath = Join-Path $buildPath "src\App.tsx"
+$appTsx = Get-Content -LiteralPath $appTsxPath -Raw
+$footerLink = '<Link href="https://github.com/ok-oldking/pyappify" target="_blank" rel="noopener noreferrer">{t(''appMadeWith'', {name: `PyAppify ${appVersion}`})}</Link>'
+if (-not $appTsx.Contains($footerLink)) {
+    throw "PyAppify footer link not found in App.tsx; update prepare_pyappify_launcher.ps1."
+}
+$appTsx = $appTsx.Replace(
+    $footerLink,
+    '<Link href="https://github.com/nobell001/YES-BD2" target="_blank" rel="noopener noreferrer">{`YES-BD2 on GitHub - PyAppify ${appVersion}`}</Link>'
+)
+Set-Content -LiteralPath $appTsxPath -Value $appTsx -Encoding UTF8
+
 $appServicePath = Join-Path $buildPath "src-tauri\src\app_service.rs"
 $appService = Get-Content -LiteralPath $appServicePath -Raw
 $appService = $appService.Replace(
