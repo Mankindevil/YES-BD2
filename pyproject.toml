@@ -44,3 +44,9 @@ quote-style = "double"
 environments = [
     "sys_platform == 'win32'",
 ]
+# pyside6-fluent-widgets pulls in the full PySide6, whose Addons wheel
+# (WebEngine, 3D, Multimedia, Charts…; ~136 MB) the tool never imports.
+# Leaving it out shrinks the installer by about a third (Leo 10-08).
+override-dependencies = [
+    "pyside6-addons; sys_platform == 'never'",
+]

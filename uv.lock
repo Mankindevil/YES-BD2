@@ -8,6 +8,9 @@ supported-markers = [
     "sys_platform == 'win32'",
 ]
 
+[manifest]
+overrides = [{ name = "pyside6-addons", marker = "sys_platform == 'never'" }]
+
 [[package]]
 name = "adbutils"
 version = "2.12.0"
@@ -428,26 +431,12 @@ name = "pyside6"
 version = "6.9.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pyside6-addons", marker = "sys_platform == 'win32'" },
     { name = "pyside6-essentials", marker = "sys_platform == 'win32'" },
     { name = "shiboken6", marker = "sys_platform == 'win32'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/83/ff/95c941f53b0faebc27dbe361d8e971b77f504b9cf36f8f5d750fd82cd6fc/PySide6-6.9.1-cp39-abi3-win_amd64.whl", hash = "sha256:c82dbb7d32bbdd465e01059174f71bddc97de152ab71bded3f1907c40f9a5f16", size = 564571, upload-time = "2025-06-03T13:20:10.321Z" },
     { url = "https://files.pythonhosted.org/packages/d1/ef/0aa5e910fa4e9770db6b45c23e360a52313922e0ca71fc060a57db613de1/PySide6-6.9.1-cp39-abi3-win_arm64.whl", hash = "sha256:1525d63dc6dc425b8c2dc5bc01a8cb1d67530401449f3a3490c09a14c095b9f9", size = 401793, upload-time = "2025-06-03T13:20:12.108Z" },
-]
-
-[[package]]
-name = "pyside6-addons"
-version = "6.9.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "pyside6-essentials", marker = "sys_platform == 'win32'" },
-    { name = "shiboken6", marker = "sys_platform == 'win32'" },
-]
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/84/be/a849402f7e73d137b5ae8b4370a49b0cf0e0c02f028b845782cb743e4995/PySide6_Addons-6.9.1-cp39-abi3-win_amd64.whl", hash = "sha256:cd93a3a5e3886cd958f3a5acc7c061c24f10a394ce9f4ce657ac394544ca7ec2", size = 143150906, upload-time = "2025-06-03T13:09:12.762Z" },
-    { url = "https://files.pythonhosted.org/packages/2a/f1/1bb6b5859aff4e2b3f5ef789b9cee200811a9f469f04d9aa7425e816622b/PySide6_Addons-6.9.1-cp39-abi3-win_arm64.whl", hash = "sha256:4f589631bdceb518080ae9c9fa288e64f092cd5bebe25adc8ad89e8eadd4db29", size = 26938762, upload-time = "2025-06-03T13:09:20.009Z" },
 ]
 
 [[package]]
