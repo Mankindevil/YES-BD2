@@ -279,6 +279,44 @@ class CloneStartTest(unittest.TestCase):
         clone_desktop.open_viewer.assert_called_once_with()
         self.clone_flow._launch.timer.stop()
 
+    def _idle_clone_of_version(self, version):
+        import time
+
+        self.tool = True
+        self.status = {"at": time.time(), "running": False, "version": version}
+        patch = mock.patch.object(self.clone_flow, "own_version", return_value="v2")
+        patch.start()
+        self.addCleanup(patch.stop)
+
+    def test_an_older_tool_in_the_clone_is_reopened_before_a_start(self):
+        # 2026-10-09 review: the tool here updated itself, the one in the clone did not.
+        from src.utils import clone_desktop
+
+        self._idle_clone_of_version("v1")
+        self.assertTrue(actions.start(self.task, window=object(), run_mode="incomplete"))
+        self.assertEqual(self.ended, [1])
+        clone_desktop.request_job.assert_called_once_with("一键完成日常", "incomplete")
+        clone_desktop.open_viewer.assert_called_once_with()
+        self.box.assert_not_called()
+        self.controller.start.assert_not_called()
+        self.clone_flow._launch.timer.stop()
+
+    def test_the_same_version_in_the_clone_takes_the_task(self):
+        from src.utils import clone_desktop
+
+        self._idle_clone_of_version("v2")
+        self.assertTrue(actions.start(self.task, window=object(), run_mode="incomplete"))
+        self.assertEqual(self.ended, [])
+        clone_desktop.open_viewer.assert_not_called()
+
+    def test_a_running_older_clone_is_left_alone(self):
+        import time
+
+        self._idle_clone_of_version("v1")
+        self.status = {"at": time.time(), "running": True, "task": "x", "version": "v1"}
+        self.assertFalse(self._start())
+        self.assertEqual(self.ended, [])
+
     def test_without_a_clone_the_start_is_as_before(self):
         self.open = False
         self.assertTrue(self._start())

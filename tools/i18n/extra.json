@@ -868,5 +868,15 @@
   "en": "Clone Desktop: the tool signs in this time.",
   "ja": "分身デスクトップ：今回はツールが自動ログインします。",
   "ko": "분신 데스크톱: 이번에는 도구가 자동 로그인합니다."
+ },
+ "分身程序不见了，可能被防毒软件（例如 360、火绒）删掉了：\n• 在防毒软件把这个文件夹设为信任：{folder}\n• 再按「第一次设定」重新建立": {
+  "en": "The Clone Desktop program is gone. An antivirus (such as 360 or Huorong) may have removed it:\n• In your antivirus, mark this folder as trusted: {folder}\n• Then press \"First-time setup\" to build it again",
+  "ja": "分身デスクトップのプログラムが見つかりません。ウイルス対策ソフト（360、火絨など）に削除された可能性があります：\n• ウイルス対策ソフトでこのフォルダーを信頼済みにする：{folder}\n• もう一度「初回設定」を押して作り直す",
+  "ko": "분신 데스크톱 프로그램이 없습니다. 백신 프로그램(360, 火绒 등)이 지웠을 수 있습니다:\n• 백신 프로그램에서 이 폴더를 신뢰하도록 설정: {folder}\n• ‘처음 설정’을 다시 눌러 새로 만들기"
+ },
+ "分身程序打不开，可能被防毒软件挡住了：请把 {folder} 设为信任，再到「设置」按「第一次设定」": {
+  "en": "The Clone Desktop program couldn't start; an antivirus may be blocking it. Mark {folder} as trusted, then press \"First-time setup\" in Settings.",
+  "ja": "分身デスクトップのプログラムを起動できません。ウイルス対策ソフトにブロックされている可能性があります。{folder} を信頼済みにしてから、「設定」で「初回設定」を押してください",
+  "ko": "분신 데스크톱 프로그램을 열 수 없습니다. 백신 프로그램이 막고 있을 수 있습니다. {folder}을(를) 신뢰하도록 설정한 뒤 ‘설정’에서 ‘처음 설정’을 누르세요"
  }
 }
