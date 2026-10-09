@@ -18,4 +18,5 @@ tools/fishing
 vendor/bd2-fishing
 scripts/build_fishing.ps1
 docs/fishing-integration.md
+docs/guides/trade-buy
 pyappify.yml

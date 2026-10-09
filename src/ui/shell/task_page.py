@@ -30,6 +30,7 @@ from src.ui.shell.widgets import (
 # Tasks whose settings live on their own page; the list only points there.
 OWN_PAGES = {
     "MapTradeTask": ("trade", "跑商", "买什么、做哪些料理、每天卖什么都在那里设定"),
+    "TradeFavoritesTask": ("trade", "跑商", "在跑商页选择攻略收藏方案并开始设置"),
     "MapCollectionTask": ("map", "跑图", "跑哪些卡带、每次最多跑几张都在那里设定"),
 }
 

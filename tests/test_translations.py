@@ -7,7 +7,7 @@ from scripts.compile_translations import compile_catalog, read_catalog
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 CATALOG_ROOT = REPOSITORY_ROOT / "i18n"
-LANGUAGES = ("en_US", "ja_JP", "ko_KR", "zh_TW")
+LANGUAGES = ("en_US", "ja_JP", "ko_KR", "zh_TW", "zh_CN")
 
 
 def _catalog(language: str) -> Path:
@@ -15,6 +15,11 @@ def _catalog(language: str) -> Path:
 
 
 class TranslationCatalogTests(unittest.TestCase):
+    def test_simplified_chinese_loads_without_changing_source_text(self):
+        translation = gettext.translation("ok", CATALOG_ROOT, languages=["zh_CN"])
+        for text in ("一键完成日常", "自动钓鱼", "已完成 {count} 项", "Unknown label"):
+            self.assertEqual(text, translation.gettext(text))
+
     def test_english_catalog_loads_and_translates_project_ui(self):
         translation = gettext.translation("ok", CATALOG_ROOT, languages=["en_US"])
 

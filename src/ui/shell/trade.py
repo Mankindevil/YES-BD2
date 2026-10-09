@@ -9,6 +9,13 @@ from PySide6.QtCore import QRectF, QSize, Qt, Signal
 from PySide6.QtGui import QFont, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import QSizePolicy, QWidget
 
+from src.tasks.map_trade.favorite_guide import (
+    GUIDE_DIR,
+    PROFILE_KEY,
+)
+from src.tasks.map_trade.favorite_guide import (
+    TASK_NAME as FAVORITES_TASK_NAME,
+)
 from src.ui.shell import actions, data, motion, theme
 from src.ui.shell.config_form import ConfigForm
 from src.ui.shell.page import Page, pill, set_pill
@@ -237,6 +244,7 @@ class TradePage(Page):
         self._build_buy()
         self._build_cook()
         self._build_sell()
+        self._build_favorites()
         self._build_calendar()
         self.body.addStretch(1)
         self._picked_day: int | None = None
@@ -314,7 +322,57 @@ class TradePage(Page):
         column.addLayout(row)
         column.addStretch(1)
         # Leo (2026-10-05): the tool buys only the game's favourites.
-        column.addWidget(self._tip(("先在游戏里把要买的商品加入收藏", "工具只买「收藏」里的商品")))
+        column.addWidget(self._tip((
+            "手动收藏，或使用下方「按攻略设置收藏」", "工具只买「收藏」里的商品",
+        )))
+
+    def _build_favorites(self) -> None:
+        self.favorites_card = Card()
+        self.favorites_column = vbox(self.favorites_card, (18, 16, 18, 18), 12)
+        self.favorites_column.addWidget(Text("按攻略设置收藏", "h2"))
+        self.favorites_column.addWidget(Text(
+            "按本地攻略替换 31 个商店的现有收藏，只设置星标，不购买。",
+            "sub", wrap=True,
+        ))
+        self.favorites_column.addWidget(Text(
+            "只买有利润商品：195 组；包含零利润商品刷成就：205 组。攻略存档：2026-10-09。",
+            "muted", wrap=True,
+        ))
+        self.favorites_form = None
+        row = hbox(None, (0, 0, 0, 0), 10)
+        self.favorites_button = Button(
+            "开始设置收藏", "primary", "play", on_click=self._start_favorites,
+        )
+        self.favorites_button.setEnabled(False)
+        row.addWidget(self.favorites_button)
+        row.addWidget(Button(
+            "查看本地攻略和图片", on_click=lambda: actions.open_folder(str(GUIDE_DIR)),
+        ))
+        row.addStretch(1)
+        self.favorites_column.addLayout(row)
+        self.favorites_status = Text("", "muted", wrap=True)
+        self.favorites_column.addWidget(self.favorites_status)
+        self.body.addWidget(self.favorites_card)
+
+    def _start_favorites(self) -> None:
+        actions.start(data.task_by_name(FAVORITES_TASK_NAME), self.window())
+        self.refresh()
+
+    def _refresh_favorites(self) -> None:
+        task = data.task_by_name(FAVORITES_TASK_NAME)
+        self.favorites_button.setEnabled(task is not None and actions.can_start())
+        if task is None:
+            self.favorites_status.set_text("收藏任务尚未加载，请等待或重启工具")
+            return
+        if self.favorites_form is None:
+            self.favorites_form = ConfigForm(task, keys=[PROFILE_KEY])
+            self.favorites_column.insertWidget(3, self.favorites_form)
+        self.favorites_form.sync()
+        self.favorites_form.setEnabled(data.current_task() is not task)
+        info = getattr(task, "info", {}) or {}
+        self.favorites_status.set_text(
+            info.get("状态") or "只需设置一次；切换方案或中途停止后可以重新运行。"
+        )
 
     @staticmethod
     def _tip(lines) -> QWidget:
@@ -547,6 +605,7 @@ class TradePage(Page):
     # ---------------------------------------------------------------- refresh
 
     def refresh(self) -> None:
+        self._refresh_favorites()
         self._fill_hints()
         task = self.task()
         if task is None:

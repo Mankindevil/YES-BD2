@@ -172,6 +172,14 @@ $env:OK_BD2_GAME_PATH = "D:\Path\To\BrownDust II.exe"
 
 </details>
 
+## 按攻略设置跑商收藏
+
+在「跑商」页的「按攻略设置收藏」中选择方案，再点「开始设置收藏」。默认按攻略收藏 195 组有利润商品，也可选择包含 10 组零利润商品的 205 组刷成就方案。
+
+此操作会替换 31 个商店的现有收藏，只调整星标，不砍价、不购买，也不自动加入每日任务。设置完成后，原有「每日跑商」会购买游戏内的收藏。中途停止或切换方案后可以重新运行，已正确的星标不会重复切换；商品布局与攻略不一致时会停止。
+
+[本地 Markdown 攻略及 33 张截图](docs/guides/trade-buy/README.md)保存于 `docs/guides/trade-buy/`，运行时无需访问腾讯文档。攻略是 2026-10-09 存档，价格和利润为原攻略口径；不替换现有出售日历。新收藏入口已做离线截图和流程测试，仍需在实际游戏中验证完整导航。
+
 ## 致谢
 
 YES-BD2 基于 [GodRaymond233/ok-bd2](https://github.com/GodRaymond233/ok-bd2) 制作，框架和一键更新来自 [ok-script](https://github.com/ok-oldking/ok-script)。也谢谢：
@@ -179,6 +187,7 @@ YES-BD2 基于 [GodRaymond233/ok-bd2](https://github.com/GodRaymond233/ok-bd2) �
 - **[MadestSamurai / MadSamurai 的 BD2 Fishing](https://github.com/MadestSamurai/bd2-fishing)**：自动钓鱼核心、游戏接口适配、鱼饵与背包保护、控制租约和离线回归。集成版本为 0.4.5，MIT 许可证及第三方声明完整保留于 `vendor/bd2-fishing/`。
 
 - [BD2DB 图鉴](https://browndust2-db.souseha.com/)：游戏名称与资料
+- [《棕色尘埃2一条龙攻略》作者及贡献者](https://docs.qq.com/aio/DQ2hEVUJxb2N3TG5u?no_promotion=1&p=vtUoQTm6eZgmT38JHgrXma)：低价买入攻略、商品收藏截图与零利润商品标记。本地存档保留来源和图片校验信息。
 - B站 [時樂淵](https://space.bilibili.com/14949646)：跑商售卖物品表
 - [BetterGI](https://github.com/babalae/better-genshin-impact)、[ChildStream](https://github.com/mattxslv/childstream)：桌面分身的做法与画面窗口
 - [JZPPP/MaaBD2](https://github.com/JZPPP/MaaBD2)：地图采集路线参考

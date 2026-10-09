@@ -62,6 +62,10 @@ class Credit:
 # write them; ``what`` follows the UI language.
 CREDITS = (
     Credit(
+        "棕色尘埃2一条龙攻略", "原攻略作者及贡献者", "低价买入攻略、收藏截图与零利润标记",
+        "https://docs.qq.com/aio/DQ2hEVUJxb2N3TG5u?no_promotion=1&p=vtUoQTm6eZgmT38JHgrXma",
+    ),
+    Credit(
         "BD2 Fishing", "MadestSamurai / MadSamurai", "自动钓鱼核心（MIT）",
         "https://github.com/MadestSamurai/bd2-fishing",
     ),

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from difflib import SequenceMatcher
 from time import monotonic
 
@@ -629,10 +630,24 @@ class ShopCartridgeNavigationMixin:
     def _align_unfavorited_points(self, shop_id: str) -> bool:
         reference = SHOP_PURCHASE_REFERENCES[shop_id]
         desired_unfavorited = reference.unfavorited_slots
+        profile = getattr(self, "favorite_guide_profile", None)
+        guide = None
+        if profile is not None:
+            from src.tasks.map_trade.favorite_guide import GUIDE_SHOPS
+
+            guide = GUIDE_SHOPS[shop_id]
+            desired_unfavorited = guide.present_slots - guide.favorite_slots(profile)
+            if self._guide_star_states(shop_id, guide) is None:
+                return False
         for slot, point in SHOP_FAVORITE_POINTS.items():
+            if guide is not None and slot not in guide.present_slots:
+                continue
             frame = self.vision.capture()
             state = self._star_state(frame, slot, point)
             if state is None:
+                if guide is not None:
+                    self.task.log_warning(f"收藏：{shop_id} #{slot} 星标消失，停止调整。")
+                    return False
                 self._status(f"{shop_id} 收藏#{slot}", "无商品，跳过")
                 continue
             if slot in desired_unfavorited:
@@ -658,7 +673,34 @@ class ShopCartridgeNavigationMixin:
                     f"买：{reference.label} #{slot} 点击后未确认黄星或加入提示。"
                 )
                 return False
+        if guide is not None:
+            states = self._guide_star_states(shop_id, guide)
+            if states is None:
+                return False
+            actual = frozenset(slot for slot, state in states.items() if state == "yellow")
+            if actual != guide.favorite_slots(profile):
+                self.task.log_warning(f"收藏：{shop_id} 最终星标与攻略不一致，停止调整。")
+                return False
         return True
+
+    def _guide_star_states(self, shop_id, guide):
+        """Require the whole known product layout before changing any star."""
+        for attempt in range(3):
+            frame = self.vision.capture()
+            states = {
+                slot: self._star_state(frame, slot, point)
+                for slot, point in SHOP_FAVORITE_POINTS.items()
+            }
+            present = frozenset(slot for slot, state in states.items() if state is not None)
+            if present == guide.present_slots:
+                return states
+            if attempt < 2:
+                self.task.sleep(0.3)
+        self.task.log_warning(
+            f"收藏：{shop_id} 商品布局与本地攻略不符，预期 {guide.product_count} 个，"
+            f"识别到的位置 {sorted(present)}；未调整此卡，请核对本地截图。"
+        )
+        return None
 
     def _star_spec(self, slot: int, point: tuple[float, float]) -> TemplateSpec:
         half_x = STAR_ROI_HALF_SIZE_X / FHD_1080.width
@@ -685,6 +727,23 @@ class ShopCartridgeNavigationMixin:
         point: tuple[float, float],
     ) -> str | None:
         spec = self._star_spec(slot, point)
+        if getattr(self, "favorite_guide_profile", None) is not None:
+            # The gray template misses some yellow stars after 900p resampling.
+            # This separately calibrated crop preserves the strict pixel gate.
+            yellow_spec = replace(
+                spec,
+                name=f"攻略黄星#{slot}",
+                file_name="shop/cartridges/star_yellow_900p.png",
+                green_mask=False,
+                reference_scale=1080 / 900,
+                minimum_safe_threshold=STAR_TEMPLATE_THRESHOLD,
+            )
+            yellow = self.vision.match(frame, yellow_spec)
+            if (
+                self.vision.passes(yellow, yellow_spec)
+                and self.vision.star_is_yellow(frame, yellow)
+            ):
+                return "yellow"
         result = self.vision.match(frame, spec)
         self._status(
             f"星标#{slot}",
@@ -761,4 +820,3 @@ class ShopCartridgeNavigationMixin:
             self.task.log_warning(f"卖：价表商店没有本地商品卡带映射：{shop}。")
             return False
         return self._select_shop_cartridge_downward(reference.shop_id)
-

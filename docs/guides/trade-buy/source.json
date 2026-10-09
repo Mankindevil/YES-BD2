@@ -1,0 +1,370 @@
+{
+  "title": "棕色尘埃2一条龙攻略 / 低价买入",
+  "source_url": "https://docs.qq.com/aio/DQ2hEVUJxb2N3TG5u?no_promotion=1&p=vtUoQTm6eZgmT38JHgrXma",
+  "archived_on": "2026-10-09",
+  "images": [
+    {
+      "id": "buy-achievement",
+      "file": "images/buy-achievement.png",
+      "url": "https://docimg3.docs.qq.com/image/AgAACqbFhuL_TwZ8igBJ2oF_9GKS46AU.png?imageMogr2/thumbnail/1600x/ignore-error/1",
+      "dimensions": [
+        1600,
+        900
+      ],
+      "sha256": "3fd7da091580d00c814dcbf5479488029fedb33896ba199cfd5ed5f13421e308",
+      "bytes": 300461
+    },
+    {
+      "id": "buy-profit",
+      "file": "images/buy-profit.png",
+      "url": "https://docimg3.docs.qq.com/image/AgAACqbFhuJBESOow3VHWLDT6t8ucg2r.png?imageMogr2/thumbnail/1600x/ignore-error/1",
+      "dimensions": [
+        1600,
+        900
+      ],
+      "sha256": "86ff92c1609653950c894502ac855143bc8dba0cd01e852fb73829da3a8f1aa9",
+      "bytes": 312418
+    },
+    {
+      "id": "S1",
+      "file": "images/S1.png",
+      "url": "https://docimg10.docs.qq.com/image/AgAACqbFhuLdiEofV2dAYZyWaXzeTApP.png?imageMogr2/thumbnail/1600x/ignore-error/1",
+      "dimensions": [
+        1600,
+        900
+      ],
+      "sha256": "58c7a0ac7f45f7cbdf27d0782ba6f943770f53e67dc6aed520accd93bbc75fc8",
+      "bytes": 329049
+    },
+    {
+      "id": "S2",
+      "file": "images/S2.png",
+      "url": "https://docimg10.docs.qq.com/image/AgAACqbFhuL0g6ty3oJFqoD9Z4iZg04m.png?imageMogr2/thumbnail/1600x/ignore-error/1",
+      "dimensions": [
+        1600,
+        900
+      ],
+      "sha256": "6db2b262b7a9a93d6a04cd38114cebf2ae82648a552183df4acd6ef473879730",
+      "bytes": 327832
+    },
+    {
+      "id": "S3",
+      "file": "images/S3.png",
+      "url": "https://docimg10.docs.qq.com/image/AgAACqbFhuJbTegUx3VHhqDJE98CUryh.png?imageMogr2/thumbnail/1600x/ignore-error/1",
+      "dimensions": [
+        1600,
+        900
+      ],
+      "sha256": "b8cec31a74068dc51a51ed7c16d69c9229d1fdf35600306863187707b56239a9",
+      "bytes": 419249
+    },
+    {
+      "id": "S4",
+      "file": "images/S4.png",
+      "url": "https://docimg10.docs.qq.com/image/AgAACqbFhuLKFuzQfMNLqqmLBbANK8vB.png?imageMogr2/thumbnail/1600x/ignore-error/1",
+      "dimensions": [
+        1600,
+        900
+      ],
+      "sha256": "562e639f505cbb1f59a7173a527e0095e24a593c27c7092be77c2a201fd3322a",
+      "bytes": 419713
+    },
+    {
+      "id": "S5",
+      "file": "images/S5.png",
+      "url": "https://docimg10.docs.qq.com/image/AgAACqbFhuIBropQGXVO8KYJ0KR3OBnZ.png?imageMogr2/thumbnail/1600x/ignore-error/1",
+      "dimensions": [
+        1600,
+        900
+      ],
+      "sha256": "027283bbb62dd0d48c195e265702c27a88f45cceef1c962fb4b22ad38513dc4e",
+      "bytes": 340724
+    },
+    {
+      "id": "S6",
+      "file": "images/S6.png",
+      "url": "https://docimg10.docs.qq.com/image/AgAACqbFhuIhlP14Yz9BD6vpK1was8Xc.png?imageMogr2/thumbnail/1600x/ignore-error/1",
+      "dimensions": [
+        1600,
+        900
+      ],
+      "sha256": "5ea716b945ac34808bc0ce0e30408225ba6a384422aa7c04255b9a5aaa1ebb83",
+      "bytes": 353258
+    },
+    {
+      "id": "S7",
+      "file": "images/S7.png",
+      "url": "https://docimg10.docs.qq.com/image/AgAACqbFhuJTTcF_HdRNrq-OlbS0-gvA.png?imageMogr2/thumbnail/1600x/ignore-error/1",
+      "dimensions": [
+        1600,
+        900
+      ],
+      "sha256": "35b40ff1a2d8045d779209c1895f81e61e661587d8c0e3ed9ddb8b58e102ea04",
+      "bytes": 353649
+    },
+    {
+      "id": "S8",
+      "file": "images/S8.png",
+      "url": "https://docimg1.docs.qq.com/image/AgAACqbFhuJVQEWtRJ5AlIV9jjh8eLue.png?imageMogr2/thumbnail/1600x/ignore-error/1",
+      "dimensions": [
+        1600,
+        900
+      ],
+      "sha256": "55e66e0f4b82b341b871208527e01ff000be141fbaa3171c35b5564c77fe5230",
+      "bytes": 412040
+    },
+    {
+      "id": "S9",
+      "file": "images/S9.png",
+      "url": "https://docimg10.docs.qq.com/image/AgAACqbFhuJcQlCuKehNRrn6ynvzZjXc.png?imageMogr2/thumbnail/1600x/ignore-error/1",
+      "dimensions": [
+        1600,
+        900
+      ],
+      "sha256": "e2d892f3c31785d24692b2b90aa3c4cef2aac955915fdca03ee2e9f5d5bfee11",
+      "bytes": 339360
+    },
+    {
+      "id": "S10",
+      "file": "images/S10.png",
+      "url": "https://docimg10.docs.qq.com/image/AgAACqbFhuJtpmZUm2BK769-7I_WzVbE.png?imageMogr2/thumbnail/1600x/ignore-error/1",
+      "dimensions": [
+        1600,
+        900
+      ],
+      "sha256": "6febc7161657fe228444c21ce351a448a4046ca2daa0d3503883c0c4d2e1434c",
+      "bytes": 412875
+    },
+    {
+      "id": "S11",
+      "file": "images/S11.png",
+      "url": "https://docimg1.docs.qq.com/image/AgAACqbFhuLE9wP_knpPZYXKGA76L-vV.png?imageMogr2/thumbnail/1600x/ignore-error/1",
+      "dimensions": [
+        1600,
+        900
+      ],
+      "sha256": "9a3afa0851d485d55f93620d81fbff32e8033ac1b41bed5e6a1de6841a6a2584",
+      "bytes": 361929
+    },
+    {
+      "id": "S12",
+      "file": "images/S12.png",
+      "url": "https://docimg1.docs.qq.com/image/AgAACqbFhuLwbVrITjNC-5L1ksrKeCbr.png?imageMogr2/thumbnail/1600x/ignore-error/1",
+      "dimensions": [
+        1600,
+        900
+      ],
+      "sha256": "3578deafccfe913570c06c83f205fceb294b2a18e4e0ba535ac4dd3875ebe250",
+      "bytes": 453649
+    },
+    {
+      "id": "S13",
+      "file": "images/S13.png",
+      "url": "https://docimg1.docs.qq.com/image/AgAACqbFhuIF_UaeorJGp4vuJwt8aNOe.png?imageMogr2/thumbnail/1600x/ignore-error/1",
+      "dimensions": [
+        1600,
+        900
+      ],
+      "sha256": "e6a0e9c31dc8c4e6d05b1487b38ea131a2fc08ab82c3cf1e7119bfdca07ed59b",
+      "bytes": 423148
+    },
+    {
+      "id": "S14",
+      "file": "images/S14.png",
+      "url": "https://docimg10.docs.qq.com/image/AgAACqbFhuKirA9w_E1BPYGWoKEmLbtC.png?imageMogr2/thumbnail/1600x/ignore-error/1",
+      "dimensions": [
+        1600,
+        900
+      ],
+      "sha256": "cd300531f34188a3c5ef43af28c93213fea3e4d4982425f22903fde5f260bff1",
+      "bytes": 418304
+    },
+    {
+      "id": "S15",
+      "file": "images/S15.png",
+      "url": "https://docimg1.docs.qq.com/image/AgAACqbFhuJjYAhmrK9PhrZgX1Mc2K5S.png?imageMogr2/thumbnail/1600x/ignore-error/1",
+      "dimensions": [
+        1600,
+        900
+      ],
+      "sha256": "4f9d3850040bf0903b00b3a5897169ae191a4427ab8be020b92e2751ad202440",
+      "bytes": 351653
+    },
+    {
+      "id": "S16",
+      "file": "images/S16.png",
+      "url": "https://docimg10.docs.qq.com/image/AgAACqbFhuIqE1zsfdNGtpi8r4iWvgJ2.png?imageMogr2/thumbnail/1600x/ignore-error/1",
+      "dimensions": [
+        1600,
+        900
+      ],
+      "sha256": "58f0c6e8d45e14d34c63d088a93e343538fdea79ae8545747ad306a5895ce03a",
+      "bytes": 359265
+    },
+    {
+      "id": "S17",
+      "file": "images/S17.png",
+      "url": "https://docimg1.docs.qq.com/image/AgAACqbFhuLioR5-vzpP4pKQKVqogqOu.png?imageMogr2/thumbnail/1600x/ignore-error/1",
+      "dimensions": [
+        1600,
+        900
+      ],
+      "sha256": "674b33783b45f3706cad1d0bd0a28b81a3456f69bfe1b42949813032a8801434",
+      "bytes": 378837
+    },
+    {
+      "id": "S18",
+      "file": "images/S18.png",
+      "url": "https://docimg1.docs.qq.com/image/AgAACqbFhuKdotDQinJKW7wcUQc-9Ii0.png?imageMogr2/thumbnail/1600x/ignore-error/1",
+      "dimensions": [
+        1600,
+        900
+      ],
+      "sha256": "25bc45495fccab8e56530bd02ebda077c66de30db07b9ca9ae207708460d871d",
+      "bytes": 336380
+    },
+    {
+      "id": "S19",
+      "file": "images/S19.png",
+      "url": "https://docimg1.docs.qq.com/image/AgAACqbFhuIlS9bfMLZBuoWN0UqHNQb5.png?imageMogr2/thumbnail/1600x/ignore-error/1",
+      "dimensions": [
+        1600,
+        900
+      ],
+      "sha256": "61ae4b7ef72042e0c84f6e88367d94df09e2d5ea5e62d066980f1d3ae4740df0",
+      "bytes": 350097
+    },
+    {
+      "id": "R1",
+      "file": "images/R1.png",
+      "url": "https://docimg9.docs.qq.com/image/AgAACqbFhuITgW7P0CRNDaLZWZFFS0No.png?imageMogr2/thumbnail/1600x/ignore-error/1",
+      "dimensions": [
+        1600,
+        900
+      ],
+      "sha256": "8d73f0e0c0310ac06e30269cb91c407fcb7eb615064784c63093632cbb378d78",
+      "bytes": 328629
+    },
+    {
+      "id": "R2",
+      "file": "images/R2.png",
+      "url": "https://docimg8.docs.qq.com/image/AgAACqbFhuLyQX5HFbNHwaAtZNbSxH87.png?imageMogr2/thumbnail/1600x/ignore-error/1",
+      "dimensions": [
+        1600,
+        900
+      ],
+      "sha256": "cd3a0bbb941b22dba38db47195e2b0296f97b1d5264fd5529ad5969887e629a8",
+      "bytes": 342519
+    },
+    {
+      "id": "R3",
+      "file": "images/R3.png",
+      "url": "https://docimg6.docs.qq.com/image/AgAACqbFhuID6sWSKVdGkoJI9IDVYQ3b.png?imageMogr2/thumbnail/1600x/ignore-error/1",
+      "dimensions": [
+        1600,
+        900
+      ],
+      "sha256": "14fa0ff64077282dd749c781d4e9b8308441731cf41610c32330a60daf0f2505",
+      "bytes": 367400
+    },
+    {
+      "id": "R4",
+      "file": "images/R4.png",
+      "url": "https://docimg1.docs.qq.com/image/AgAACqbFhuJs3qLDwAlIdayjKf323Hph.png?imageMogr2/thumbnail/1600x/ignore-error/1",
+      "dimensions": [
+        1600,
+        900
+      ],
+      "sha256": "d868e4f4e2a7f0e3f6ec12206a687830508ea88d3238daa22368385e5795dece",
+      "bytes": 320232
+    },
+    {
+      "id": "R5",
+      "file": "images/R5.png",
+      "url": "https://docimg1.docs.qq.com/image/AgAACqbFhuJ3TE-a971Cb6IWPx1_WZva.png?imageMogr2/thumbnail/1600x/ignore-error/1",
+      "dimensions": [
+        1600,
+        900
+      ],
+      "sha256": "556295f8b1662d1b3ca2e0ce202227eb880c34aad0ca21f2c7e687c6daecd3c8",
+      "bytes": 374815
+    },
+    {
+      "id": "R6",
+      "file": "images/R6.png",
+      "url": "https://docimg1.docs.qq.com/image/AgAACqbFhuJl-Nvt2n1Pl6oakPiDQIc-.png?imageMogr2/thumbnail/1600x/ignore-error/1",
+      "dimensions": [
+        1600,
+        900
+      ],
+      "sha256": "9c884734d9f42a4211616cfccea2b53f56b050a66e7e5a5ef77c8246b782bffe",
+      "bytes": 389305
+    },
+    {
+      "id": "R7",
+      "file": "images/R7.png",
+      "url": "https://docimg4.docs.qq.com/image/AgAACqbFhuIRE8yayKFKlbytpa5twYRa.png?imageMogr2/thumbnail/1600x/ignore-error/1",
+      "dimensions": [
+        1600,
+        900
+      ],
+      "sha256": "d7e061edf3049fc3c4d8f532b13fe22101880878cb1a6e8bae4930590893a2f0",
+      "bytes": 327372
+    },
+    {
+      "id": "E1",
+      "file": "images/E1.png",
+      "url": "https://docimg1.docs.qq.com/image/AgAACqbFhuIAtplsMNhA_rWLTM4NHF3H.png?imageMogr2/thumbnail/1600x/ignore-error/1",
+      "dimensions": [
+        1600,
+        900
+      ],
+      "sha256": "24f26838a1532b85c1a32033fa8085c1fce8bd1bddf2764e0bd96f4f4573d5bf",
+      "bytes": 307894
+    },
+    {
+      "id": "E2",
+      "file": "images/E2.png",
+      "url": "https://docimg7.docs.qq.com/image/AgAACqbFhuI7Ogys-eZFaLr1JKLOXpQv.png?imageMogr2/thumbnail/1600x/ignore-error/1",
+      "dimensions": [
+        1600,
+        900
+      ],
+      "sha256": "37056923e0436b030f5529afc3aa798e6dc3fd794292af8d406755e0089ceede",
+      "bytes": 308271
+    },
+    {
+      "id": "E3",
+      "file": "images/E3.png",
+      "url": "https://docimg3.docs.qq.com/image/AgAACqbFhuJkqRk1bRFEWLzAI0Kl5eep.png?imageMogr2/thumbnail/1600x/ignore-error/1",
+      "dimensions": [
+        1600,
+        900
+      ],
+      "sha256": "5eb2e6e40366139cc0628a90903b666b76a92d8a1562558ab71de6fdc4ed70f5",
+      "bytes": 360415
+    },
+    {
+      "id": "E5",
+      "file": "images/E5.png",
+      "url": "https://docimg10.docs.qq.com/image/AgAACqbFhuLuPUvotgVGro5XjBX5vB-_.png?imageMogr2/thumbnail/1600x/ignore-error/1",
+      "dimensions": [
+        1600,
+        900
+      ],
+      "sha256": "19c1f5b4f833007b9a2aadffa46acd4b27eea9e0ecfeb5fb5612b6188ab6020d",
+      "bytes": 322759
+    },
+    {
+      "id": "E7",
+      "file": "images/E7.png",
+      "url": "https://docimg3.docs.qq.com/image/AgAACqbFhuLSmyQ9OuFKJYdxuozoOSq8.png?imageMogr2/thumbnail/1600x/ignore-error/1",
+      "dimensions": [
+        1600,
+        900
+      ],
+      "sha256": "b5eff4c7bb7293cf83a6a846ed98e231e81162ad2e516b7efb38a3bb2d847b82",
+      "bytes": 347069
+    }
+  ]
+}

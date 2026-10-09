@@ -49,6 +49,7 @@ CHILD_META = {
 }
 # Task display name -> (icon, kind) for tasks outside the batches.
 TASK_ICONS = {
+    "按攻略设置收藏": ("star", "trade"),
     "自动钓鱼": ("gamepad-2", "plain"),
     "回到主页": ("undo-2", "plain"),
     "自动登录游戏": ("log-in", "plain"),

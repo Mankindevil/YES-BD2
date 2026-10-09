@@ -114,6 +114,17 @@ client's metadata when the user explicitly starts the fishing task.
 
 ## Game And Platform Materials
 
+The local archive in `docs/guides/trade-buy/` contains the low-price buying page
+and 33 screenshots from **棕色尘埃2一条龙攻略**, retrieved on 2026-10-09:
+https://docs.qq.com/aio/DQ2hEVUJxb2N3TG5u?no_promotion=1&p=vtUoQTm6eZgmT38JHgrXma
+Thanks to the guide's authors and contributors for the purchase/favorite plan
+and zero-profit markings. `source.json` records the observed image URLs and
+SHA-256 hashes. These third-party guide materials are not licensed under this
+repository's GPL code license; rights remain with their respective holders.
+`recognition-assets/template-assets/shop/cartridges/star_yellow_900p.png` is a
+22-by-22 pixel recognition crop from `images/R1.png`, rectangle (749, 106, 771, 128)
+in the archived 1600-by-900 screenshot, with the same provenance.
+
 BrownDust II names, UI screenshots, icons, and template images belong to their
 respective rights holders. This project uses them only for image recognition,
 testing, and documentation of this automation tool.

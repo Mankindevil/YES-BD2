@@ -2584,3 +2584,47 @@ msgstr "Automatic fishing"
 
 msgid "后台运行（桌面分身）"
 msgstr "Background running (Clone Desktop)"
+
+# Local trade favorite guide
+
+msgid "低价买入攻略、收藏截图与零利润标记"
+msgstr "Low-price buying guide, favorite screenshots and zero-profit markings"
+
+msgid "按攻略设置收藏"
+msgstr "Set favorites from guide"
+
+msgid "收藏方案"
+msgstr "Favorite plan"
+
+msgid "只买有利润商品"
+msgstr "Profitable items only"
+
+msgid "包含零利润商品刷成就"
+msgstr "Include zero-profit items for achievements"
+
+msgid "开始设置收藏"
+msgstr "Set favorites"
+
+msgid "查看本地攻略和图片"
+msgstr "Open local guide and images"
+
+msgid "按本地攻略替换 31 个商店的现有收藏，只设置星标，不购买。"
+msgstr "Replace favorites in 31 shops using the local guide. Sets stars only; makes no purchases."
+
+msgid "只买有利润商品：195 组；包含零利润商品刷成就：205 组。攻略存档：2026-10-09。"
+msgstr "195 groups for profit only; 205 including zero-profit achievement items. Guide archived: 2026-10-09."
+
+msgid "收藏任务尚未加载，请等待或重启工具"
+msgstr "Favorite task is loading. Please wait or restart the tool."
+
+msgid "只需设置一次；切换方案或中途停止后可以重新运行。"
+msgstr "Set once. Run again after changing the plan or stopping partway."
+
+msgid "手动收藏，或使用下方「按攻略设置收藏」"
+msgstr "Set favorites manually or use the guide setup below"
+
+msgid "在跑商页选择攻略收藏方案并开始设置"
+msgstr "Choose a guide favorite plan and start on the Trading page"
+
+msgid "默认排除攻略红框内的零利润商品；刷成就方案包含这些商品。会替换已有收藏；更换方案或中途停止后可重新运行，逐项核对星标。"
+msgstr "Excludes the red-box zero-profit items by default; the achievement plan includes them. Replaces existing favorites. Run again after changing plans or stopping to check every star."
