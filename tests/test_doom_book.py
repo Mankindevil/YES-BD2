@@ -267,9 +267,24 @@ class GoBattleTimingTest(unittest.TestCase):
         task._new_record_visible = lambda _frame: False
         reads = []
         task._doom_page_visible = lambda _frame: reads.append(1) or True
+        task._back_to_field_from_page = lambda: False
         task._field_to_home = lambda: self.fail("not on the field")
         task._leave_result_after_failure()
         self.assertEqual(2, len(reads))
+
+    def test_cleanup_leaves_the_doom_page_for_home(self):
+        from unittest import mock
+
+        task = self._task()
+        task._reference_boxes = lambda *a: []
+        task._field_visible = lambda _frame: False
+        task._new_record_visible = lambda _frame: False
+        task._doom_page_visible = lambda _frame: True
+        task._back_to_field_from_page = mock.Mock(return_value=True)
+        task._field_to_home = mock.Mock(return_value=True)
+        task._leave_result_after_failure()
+        task._back_to_field_from_page.assert_called_once()
+        task._field_to_home.assert_called_once()
 
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
@@ -461,6 +476,13 @@ class NewRecordFlowTest(unittest.TestCase):
     def test_record_before_the_result(self):
         self.assertEqual(
             ["page", "record", "result"], self._run(["page", "record", "result", "field"])
+        )
+
+    def test_record_then_back_on_the_doom_page(self):
+        # 4K 桌面分身 2026-10-09: after 创造新纪录 the game showed the
+        # 末日之书 page again; its back arrow leads to the field.
+        self.assertEqual(
+            ["page", "record", "page"], self._run(["page", "record", "page", "field"])
         )
 
     def test_record_after_leaving(self):
