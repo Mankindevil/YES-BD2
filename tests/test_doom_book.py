@@ -149,6 +149,7 @@ class DoomBookFailureTest(unittest.TestCase):
         task._field_to_home = mock.Mock(return_value=True)
         task._reset_to_spawn = mock.Mock(return_value=True)
         task._save_flow_diagnostic = lambda *a: None
+        task._move_mode = lambda: "键盘WASD走到舞台"
         return task
 
     def test_refused_keys_skip_the_cartridge_reset(self):
@@ -525,3 +526,91 @@ class DoomPageAfterRecordTest(unittest.TestCase):
             self.assertTrue(task._doom_page_visible(frame), name)
             self.assertFalse(task._new_record_visible(frame), name)
             self.assertFalse(task._field_visible(frame), name)
+
+
+class ClickToMoveTest(unittest.TestCase):
+    """Leo 2026-10-09: 末日之书 follows 镜中之战's 「舞台移动方式」; with click-to-move
+    it clicks the red crossed-swords marker (player gghot2001: 「不往门里走」)."""
+
+    def _task(self, frames, page_after_clicks=1):
+        from types import SimpleNamespace
+        from unittest import mock
+
+        from src.tasks.DoomBookTask import DoomBookTask
+
+        task = object.__new__(DoomBookTask)
+        task.info_set = lambda *a: None
+        task.log_info = mock.Mock()
+        task.sleep = lambda *a: None
+        task.clicks = []
+        task.operate_click = lambda x, y, after_sleep=0.0: task.clicks.append((x, y))
+        frames = iter(frames)
+        task.capture_frame = lambda: next(frames, None)
+        task._field_visible = lambda frame: frame is not None
+        task._doom_page_visible = lambda frame: len(task.clicks) >= page_after_clicks
+        task._wait_for = lambda check, timeout, interval=0.6: check(task.capture_frame())
+        task._keys_refused = False
+        task._executor = SimpleNamespace(get_task_by_class=lambda cls: None)
+        return task
+
+    def test_marker_is_found_at_every_resolution(self):
+        # The marker drawn at 2K and 4K size lands on the same 1080 point.
+        for scale in (1.0, 4 / 3, 2.0):
+            with self.subTest(scale=scale):
+                width, height = round(1920 * scale), round(1080 * scale)
+                frame = np.full((height, width, 3), (70, 80, 90), dtype=np.uint8)
+                x, y, r = round(1561 * scale), round(313 * scale), round(14 * scale)
+                thick = max(1, round(6 * scale))
+                cv2.line(frame, (x - r, y - r), (x + r, y + r), (20, 20, 220), thick)
+                cv2.line(frame, (x + r, y - r), (x - r, y + r), (20, 20, 220), thick)
+                found = find_marker(cv2.resize(frame, (1920, 1080), interpolation=cv2.INTER_AREA))
+                self.assertIsNotNone(found)
+                self.assertLess(abs(found[0] - 1561) + abs(found[1] - 313), 4)
+
+    def test_click_lands_on_the_marker(self):
+        task = self._task([field_with_marker((1561, 313))] * 3)
+        self.assertTrue(task._click_to_marker())
+        (x, y), = task.clicks
+        # Relative to the window, so any resolution and the clone get the same spot.
+        self.assertAlmostEqual(1561 / 1920, x, delta=0.003)
+        self.assertAlmostEqual(313 / 1080, y, delta=0.003)
+
+    def test_no_click_without_a_marker(self):
+        empty = np.full((1080, 1920, 3), (70, 80, 90), dtype=np.uint8)
+        task = self._task([empty] * 8)
+        self.assertFalse(task._click_to_marker())
+        self.assertEqual([], task.clicks)
+
+    def test_gives_up_after_a_few_clicks_that_go_nowhere(self):
+        from src.tasks.DoomBookTask import CLICK_MAX_TRIES
+
+        task = self._task([field_with_marker((1561, 313))] * 20, page_after_clicks=99)
+        self.assertFalse(task._click_to_marker())
+        self.assertEqual(CLICK_MAX_TRIES, len(task.clicks))
+
+    def test_the_other_way_is_tried_when_the_setting_does_not_work(self):
+        from unittest import mock
+
+        task = self._task([field_with_marker((1561, 313))] * 5)
+        task._move_mode = lambda: "鼠标点击舞台"
+        task._click_to_marker = mock.Mock(return_value=False)
+        task._walk_to_marker = mock.Mock(return_value=True)
+        self.assertTrue(task._reach_marker())
+        task._click_to_marker.assert_called_once()
+        task._walk_to_marker.assert_called_once()
+
+        task._move_mode = lambda: "键盘WASD走到舞台"
+        task._click_to_marker = mock.Mock(return_value=True)
+        task._walk_to_marker = mock.Mock(return_value=False)
+        self.assertTrue(task._reach_marker())
+        task._walk_to_marker.assert_called_once()
+
+    def test_setting_is_read_from_mirror_wars(self):
+        from types import SimpleNamespace
+
+        task = self._task([])
+        pvp = SimpleNamespace(config={"舞台移动方式": "键盘WASD走到舞台"})
+        task._executor = SimpleNamespace(get_task_by_class=lambda cls: pvp)
+        self.assertEqual("键盘WASD走到舞台", task._move_mode())
+        task._executor = SimpleNamespace(get_task_by_class=lambda cls: None)
+        self.assertEqual("鼠标点击舞台", task._move_mode())

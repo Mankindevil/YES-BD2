@@ -60,8 +60,11 @@ class CharacterCardModelTest(unittest.TestCase):
         self.assertIn(("Q_cp3", "battle_area_2", "battle_area_1"), WALK_LABEL_EDGES)
         self.assertEqual("艾琳", TOWN_NAV_ENTRIES["Q_cp3"])
         self.assertEqual("艾琳", RESTART_NAV_ENTRIES["Q_cp3"])
-        # Only card 3 leaves a patrol catch alone; ch14 keeps its ✕ handling.
-        self.assertEqual(frozenset({"Q_cp3"}), RESUMING_WALK_CARD_IDS)
+        # Card 3 leaves a patrol catch alone; ch14 keeps its ✕ handling.  The
+        # walked event cards also wait their long walks out.
+        self.assertEqual(
+            frozenset({"Q_cp3", "Q_ep1", "Q_ep3", "Q_ep5", "Q_ep7"}), RESUMING_WALK_CARD_IDS
+        )
 
     def test_filter_takes_chapters_and_character_cards(self):
         self.assertEqual({14, "R1"}, chapter_filter("14、R1"))

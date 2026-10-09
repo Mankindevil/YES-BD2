@@ -300,7 +300,7 @@ class ProgressTest(unittest.TestCase):
             )
             store.load()
             for card_index, card in enumerate(COLLECTABLE_CARDS):
-                if card_index in {7, 14, 21}:
+                if card_index and card_index % 7 == 0:  # 7 cards a day
                     now[0] = now[0].replace(day=now[0].day + 1)
                     store.load()
                 for target in card.targets:
@@ -308,8 +308,9 @@ class ProgressTest(unittest.TestCase):
                     store.mark_target(card.card_id, target.key)
 
             # 18 cards x 3 + chapter 18's two battle maps, then character
-            # cards 1-7 (2 + 3 + 3 + 3 + 2 + 3 + 2).
-            self.assertEqual(74, store.state.weekly_submap_count)
+            # cards 1-7 (2 + 3 + 3 + 3 + 2 + 3 + 2), then event cards
+            # 1/2/3/5/7 (2 + 3 + 2 + 2 + 2).
+            self.assertEqual(85, store.state.weekly_submap_count)
 
     def test_schema_one_collection_progress_resets_without_losing_other_progress(self):
         with tempfile.TemporaryDirectory() as temp_dir:
