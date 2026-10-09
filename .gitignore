@@ -87,5 +87,8 @@ Desktop.ini
 /recognition-assets/template-assets/QQ????????-??????.png
 /recognition-assets/template-assets/*.mp4_*.png
 .local-dev/
+**/bin/
+**/obj/
+/tools/fishing/backend/
 # Leo's tool settings snapshot for moving to another PC
 !/docs/dev-notes/configs/

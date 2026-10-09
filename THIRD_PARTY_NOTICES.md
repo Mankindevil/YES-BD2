@@ -89,6 +89,29 @@ licenses and attribution requirements are also preserved.
 | JZPPP/MaaBD2 | Reference for BrownDust II map-collection navigation ideas. | https://github.com/JZPPP/MaaBD2 |
 | BD2DB | Public market data used once to seed the bundled 1-28 day price snapshot. The runtime does not query this site. | https://browndust2-db.souseha.com/en/market-data |
 
+## Optional Fishing Module
+
+The optional fishing task incorporates **BD2 Fishing** by **MadestSamurai**
+(Bilibili: **MadSamurai**), https://github.com/MadestSamurai/bd2-fishing,
+version 0.4.5, commit `d4821c71192e63ebbb5dcc56644c973470a3d1d8`.
+Thank you for the fishing policies, interface adaptation, inventory/bait protections,
+control leases, and regression tests.
+
+The retained source is under `vendor/bd2-fishing/`. Its MIT copyright and license
+remain in `vendor/bd2-fishing/LICENSE`; local changes are recorded in
+`vendor/bd2-fishing/UPSTREAM.md`. The original project remains MIT licensed.
+The YES-BD2 adapter is covered by this repository's GPL-3.0 license.
+
+Preserve the upstream `THIRD_PARTY_NOTICES.md` and `licenses/` when redistributing.
+They cover SharpMonoInjector (MIT), Harmony 2.4.2 (MIT), Mono.Cecil 0.11.6 (MIT),
+Roslyn 4.14.0 (MIT plus notices), and .NET runtime (MIT plus third-party notices).
+The build script includes these licenses alongside the self-contained backend.
+
+Fishing uses process injection and game-internal callbacks, unlike the ordinary
+image-recognition tasks. No game assemblies are included in this repository or
+the fishing backend. Interface components are compiled locally from the installed
+client's metadata when the user explicitly starts the fishing task.
+
 ## Game And Platform Materials
 
 BrownDust II names, UI screenshots, icons, and template images belong to their

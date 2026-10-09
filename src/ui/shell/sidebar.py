@@ -195,6 +195,7 @@ class Sidebar(QWidget):
         ("map", "跑图", "map"),
         # Leo 2026-10-06: 魔兽战 back, on a page of its own.
         ("fiend", "魔兽追踪者", "skull"),
+        ("fishing", "自动钓鱼", "gamepad-2"),
     )
     BOTTOM = (
         # Leo 2026-10-09: players send what went wrong from here, always in reach.

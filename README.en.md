@@ -26,7 +26,7 @@
 ## Disclaimer
 
 - **Free and open source**: a personal learning project in Python, image recognition, OCR and UI automation. It costs nothing.
-- **Screen and mouse only**: it never reads or changes game memory or game files.
+- **Ordinary daily tasks** use screen recognition and simulated input. The optional **Fishing** module injects code into the game and calls internal APIs; this carries account risks. See [integration and setup](docs/fishing-integration.md).
 - **Your own risk**: automation tools may break the game's or platform's terms of service. Restrictions, bans or reward rollbacks are on the user.
 - **Unofficial**: not related to the developers, publishers or platforms of Brown Dust 2.
 - **No profit use**: boosting, selling scripts, paid hosting or any other for-profit use is not allowed.
@@ -136,6 +136,8 @@ More: [Architecture](docs/architecture.md) · [Release checklist](docs/release-c
 </details>
 
 ## Thanks
+
+Optional fishing uses [BD2 Fishing by MadestSamurai / MadSamurai](https://github.com/MadestSamurai/bd2-fishing), version 0.4.5. Thank you for the core, compatibility adapter and protection policies. Its MIT license and third-party notices are preserved in `vendor/bd2-fishing/`.
 
 YES-BD2 is built on [GodRaymond233/ok-bd2](https://github.com/GodRaymond233/ok-bd2); the framework and one-click updates come from [ok-script](https://github.com/ok-oldking/ok-script). Thanks also to:
 

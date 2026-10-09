@@ -26,7 +26,7 @@
 ## 免責宣告
 
 - **免費、開源**：個人學習 Python、影像識別、OCR 與介面自動化的作品，不收任何費用。
-- **只看畫面、模擬滑鼠**：不讀取、不修改遊戲記憶體和遊戲檔案。
+- **一般日常任務**使用圖像辨識與模擬輸入。可選的**自動釣魚**會向遊戲程序注入元件、讀取釣魚狀態並呼叫內部介面，有帳號處罰風險。設定方式見[釣魚整合說明](docs/fishing-integration.md)。
 - **風險自負**：自動化工具可能違反遊戲或平台的服務條款，帳號被限制、封禁或獎勵被回收，由使用者自行承擔。
 - **非官方**：和棕色塵埃2 的開發商、發行商及平台沒有任何關係。
 - **禁止營利**：不接受代練、賣腳本、付費代掛等任何營利用途。
@@ -134,6 +134,8 @@ $env:OK_BD2_GAME_PATH = "D:\Path\To\BrownDust II.exe"
 </details>
 
 ## 致謝
+
+自動釣魚核心來自 [MadestSamurai / MadSamurai 的 BD2 Fishing](https://github.com/MadestSamurai/bd2-fishing) 0.4.5，感謝其介面適配、魚餌與背包保護及離線回歸。MIT 授權及第三方聲明保留於 `vendor/bd2-fishing/`。
 
 YES-BD2 基於 [GodRaymond233/ok-bd2](https://github.com/GodRaymond233/ok-bd2) 製作，框架和一鍵更新來自 [ok-script](https://github.com/ok-oldking/ok-script)。也謝謝：
 

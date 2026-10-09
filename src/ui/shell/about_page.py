@@ -61,6 +61,10 @@ class Credit:
 # THIRD_PARTY_NOTICES.md checked 2026-10-05).  Names stay as their authors
 # write them; ``what`` follows the UI language.
 CREDITS = (
+    Credit(
+        "BD2 Fishing", "MadestSamurai / MadSamurai", "自动钓鱼核心（MIT）",
+        "https://github.com/MadestSamurai/bd2-fishing",
+    ),
     Credit("ok-bd2", "GodRaymond233", "这个工具的起点", "https://github.com/GodRaymond233/ok-bd2"),
     Credit(
         "ok-script", "ok-oldking", "底层框架和一键更新", "https://github.com/ok-oldking/ok-script"

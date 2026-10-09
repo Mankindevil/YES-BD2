@@ -175,6 +175,7 @@ config = {
     ],
     "onetime_tasks": [
         ["src.tasks.DailyBatchTask", "DailyBatchTask"],
+        ["src.tasks.FishingTask", "FishingTask"],
         ["src.tasks.DailyTask", "DailyTask"],
         ["src.tasks.QuickHuntTask", "QuickHuntTask"],
         ["src.tasks.FiendHuntTask", "FiendHuntTask"],

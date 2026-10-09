@@ -1,4 +1,19 @@
 {
+ "后台运行（桌面分身）": {
+  "en": "Background running (Clone Desktop)",
+  "ja": "バックグラウンド実行（クローンデスクトップ）",
+  "ko": "백그라운드 실행 (복제 데스크톱)"
+ },
+ "自动钓鱼核心（MIT）": {
+  "en": "Automatic fishing core (MIT)",
+  "ja": "自動釣りコア（MIT）",
+  "ko": "자동 낚시 코어 (MIT)"
+ },
+ "自动钓鱼": {
+  "en": "Automatic fishing",
+  "ja": "自動釣り",
+  "ko": "자동 낚시"
+ },
  "换语言": {
   "en": "Change language",
   "ja": "言語の変更",

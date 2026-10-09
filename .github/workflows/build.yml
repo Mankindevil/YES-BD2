@@ -106,6 +106,20 @@ jobs:
 
           python -m unittest discover -s tests -v
 
+      - name: Build self-contained fishing backend
+        shell: pwsh
+        run: .\scripts\build_fishing.ps1
+
+      - name: Test fishing backend offline
+        shell: pwsh
+        run: |
+          python -m unittest tests.test_fishing_bridge tests.test_fishing_runner tests.test_fishing_page -q
+          if ($LASTEXITCODE -ne 0) { throw "Fishing integration tests failed." }
+          dotnet run --project vendor/bd2-fishing/tests/BD2Fishing.Tests.csproj -c Release --property:RestoreLockedMode=true
+          if ($LASTEXITCODE -ne 0) { throw "Fishing policy tests failed." }
+          dotnet run --project vendor/bd2-fishing/compatibility-tests/BD2Fishing.Compatibility.Tests.csproj -c Release --property:RestoreLockedMode=true
+          if ($LASTEXITCODE -ne 0) { throw "Fishing compatibility tests failed." }
+
       - name: Inline ok-script for update repository
         run: |
           python -m ok.update.inline_ok_requirements --tag ${{ github.ref_name }}

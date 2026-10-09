@@ -2242,3 +2242,15 @@ msgstr "마우스로 무대 클릭"
 
 msgid "（尺寸已是目标值）"
 msgstr " (이미 이 크기)"
+
+
+msgid "自动钓鱼核心（MIT）"
+msgstr "자동 낚시 코어 (MIT)"
+
+
+msgid "自动钓鱼"
+msgstr "자동 낚시"
+
+
+msgid "后台运行（桌面分身）"
+msgstr "백그라운드 실행 (복제 데스크톱)"

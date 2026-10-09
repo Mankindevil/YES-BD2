@@ -2572,3 +2572,15 @@ msgstr "Packs on Home → Last Night → walk to the red crossed-swords marker �
 
 msgid "游戏设置为点击移动时选「鼠标点击舞台」；用 WASD 移动的玩家选「键盘WASD走到舞台」。末日之书走到红色战斗标记也用这个设置，走不到时会换另一种方式再试。"
 msgstr "If the game is set to click-to-move, choose \"Click to stage\"; players who move with WASD choose \"Walk to stage with WASD\". Last Night uses this setting too to reach the red battle marker, and tries the other way if it can't get there."
+
+
+msgid "自动钓鱼核心（MIT）"
+msgstr "Automatic fishing core (MIT)"
+
+
+msgid "自动钓鱼"
+msgstr "Automatic fishing"
+
+
+msgid "后台运行（桌面分身）"
+msgstr "Background running (Clone Desktop)"

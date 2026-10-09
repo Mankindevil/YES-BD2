@@ -7,3 +7,5 @@ configs/
 screenshots/
 logs/
 probe_outputs/
+**/bin/
+**/obj/

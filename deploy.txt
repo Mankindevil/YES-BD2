@@ -14,4 +14,8 @@ assets
 ok_templates
 recognition-assets/template-assets
 tools/clone_desktop
+tools/fishing
+vendor/bd2-fishing
+scripts/build_fishing.ps1
+docs/fishing-integration.md
 pyappify.yml

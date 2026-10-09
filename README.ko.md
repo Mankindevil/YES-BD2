@@ -26,7 +26,7 @@
 ## 면책 조항
 
 - **무료·오픈소스**: Python, 이미지 인식, OCR, UI 자동화를 배우기 위한 개인 프로젝트이며 비용이 들지 않습니다.
-- **화면을 보고 마우스만 움직임**: 게임 메모리나 게임 파일을 읽거나 바꾸지 않습니다.
+- **일반 일일 작업**은 화면 인식과 입력 모사를 사용합니다. 선택 기능인 **자동 낚시**는 게임에 코드를 주입하고 내부 API를 호출하므로 계정 제재 위험이 있습니다. [설정 안내](docs/fishing-integration.md)를 확인하세요.
 - **본인 책임**: 자동화 도구는 게임이나 플랫폼의 이용 약관을 위반할 수 있습니다. 계정 제한·정지·보상 회수의 위험은 사용자가 집니다.
 - **비공식**: 브라운더스트2의 개발사, 운영사, 플랫폼과 아무런 관계가 없습니다.
 - **영리 이용 금지**: 대리 진행, 스크립트 판매, 유료 대행 등 영리 목적의 이용을 허용하지 않습니다.
@@ -136,6 +136,8 @@ $env:OK_BD2_GAME_PATH = "D:\Path\To\BrownDust II.exe"
 </details>
 
 ## 감사의 말
+
+자동 낚시는 [MadestSamurai / MadSamurai의 BD2 Fishing](https://github.com/MadestSamurai/bd2-fishing) 0.4.5를 사용합니다. 낚시 제어, 호환성 대응, 물고기 보호 기능에 감사드립니다. MIT 라이선스와 서드파티 고지는 `vendor/bd2-fishing/`에 보존되어 있습니다.
 
 YES-BD2는 [GodRaymond233/ok-bd2](https://github.com/GodRaymond233/ok-bd2)를 바탕으로 만들었고, 프레임워크와 원클릭 업데이트는 [ok-script](https://github.com/ok-oldking/ok-script)에서 왔습니다. 다음 분들께도 감사드립니다.
 

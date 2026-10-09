@@ -36,6 +36,12 @@ def start(task, window=None, run_mode: str | None = None) -> bool:
         logger.info("start pressed but the task was not found")
         _warn(window, "找不到这个任务，请重开工具再试")
         return False
+    from src.fishing.runner import block_reason
+
+    fishing_block = block_reason()
+    if fishing_block:
+        _warn(window, fishing_block)
+        return False
     logger.info(f"start pressed: {getattr(task, 'name', task)} (mode {run_mode or '-'})")
     if task.enabled and task.paused:
         task.unpause()

@@ -133,6 +133,11 @@ class BaseBD2Task(BaseTask):
             return
 
         def guarded_run(self, *args, **run_kwargs):
+            from src.fishing.runner import block_reason
+
+            fishing_block = block_reason()
+            if fishing_block:
+                raise RuntimeError(fishing_block)
             # Only fully constructed tasks (the executor's); bare test doubles
             # made with object.__new__ have no screen to recover.
             constructed = "_action_interval_lock" in getattr(self, "__dict__", {})

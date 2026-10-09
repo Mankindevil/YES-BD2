@@ -692,6 +692,7 @@ def run_status() -> dict:
         "started": getattr(current, "start_time", 0) or None,
         "stage": stage,
         "log": str(info.get("Log") or "").strip(),
+        "fishing": dict(getattr(current, "fishing_status", {}) or {}),
     }
 
 
