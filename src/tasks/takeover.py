@@ -41,6 +41,7 @@ MOUSE_PRESS_MESSAGES = frozenset(
 )
 LLMHF_INJECTED = 0x01
 LLKHF_INJECTED = 0x10
+LLKHF_ALTDOWN = 0x20
 FUNCTION_KEYS = range(0x70, 0x88)  # VK_F1 .. VK_F24
 # Lock and modifier keys alone never operate the game.  On the 桌面分身,
 # Remote Desktop re-sends their state as real key presses whenever its window
@@ -72,6 +73,11 @@ def mouse_takeover(msg: int, flags: int, window_is_game: bool, game_in_front: bo
 
 def key_takeover(msg: int, flags: int, vk: int, game_in_front: bool) -> bool:
     """A real key press while the game has the keyboard (F-keys and state keys excepted)."""
+    # The low-level hook sees Tab before Windows changes the foreground.
+    # Alt+Tab (including Alt+Shift+Tab) is switching apps, not playing.
+    # Keep plain Tab and other Alt shortcuts subject to takeover detection.
+    if vk == 0x09 and flags & LLKHF_ALTDOWN:
+        return False
     return (
         msg in (WM_KEYDOWN, WM_SYSKEYDOWN)
         and not flags & LLKHF_INJECTED
@@ -162,7 +168,10 @@ class TakeoverMonitor:
 
                     front = self._root_is_game(win32gui.GetForegroundWindow())
                     if key_takeover(msg, data.flags, data.vkCode, front):
-                        logger.info(f"takeover: real key vk=0x{data.vkCode:02X} on the game")
+                        logger.info(
+                            f"takeover: real key vk=0x{data.vkCode:02X} "
+                            f"flags=0x{data.flags:02X} on the game"
+                        )
                         self._take_over(task, "键盘")
         except Exception:
             pass

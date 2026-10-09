@@ -32,7 +32,6 @@ from src.ui.shell.widgets import (
     clear_layout,
     draw_fitted,
     fmt_clock,
-    fmt_duration,
     fmt_minutes,
     grid_container,
     hbox,
@@ -545,7 +544,7 @@ class HomePage(Page):
         )
         # Leo (2026-10-03): a separate start for 桌面分身, no mode switch.
         self.start_clone = Button(
-            "在桌面分身跑",
+            "后台运行（桌面分身）",
             "secondary",
             "monitor",
             on_click=self._start_in_clone,
@@ -553,7 +552,7 @@ class HomePage(Page):
         self.start_clone.setToolTip(
             t("纯后台执行：游戏在独立的分身窗口里跑，缩小也照跑；你照常用电脑，鼠标键盘不会被抢")
         )
-        self.start_clone.setVisible(clone_flow.available())
+        self.start_clone.setVisible(not clone_desktop.in_clone())
         # Shown while 「打开就自动跑日常」 counts down (Leo 2026-10-09).
         self.cancel_autorun = Button("取消自动开始", "secondary", on_click=self._cancel_autorun)
         self.cancel_autorun.hide()
@@ -563,6 +562,10 @@ class HomePage(Page):
         buttons.addWidget(self.start_all)
         buttons.addWidget(self.start_rest)
         buttons.addWidget(self.start_clone)
+        self.clone_hint = Text(clone_flow.background_status(), "muted", wrap=True)
+        self.clone_hint.setMaximumWidth(280)
+        self.clone_hint.setVisible(not clone_desktop.in_clone())
+        buttons.addWidget(self.clone_hint)
         # The plain start uses the real mouse (Leo, 2026-10-03).
         buttons.addWidget(Text("一般执行时请别动键盘和鼠标", "muted"), 0, Qt.AlignHCenter)
         # Leo 2026-10-09: the player chooses here whether opening the tool runs it.
@@ -664,7 +667,8 @@ class HomePage(Page):
         self.start_rest.setEnabled(not busy)
         self.resume.setEnabled(not busy and batch is not None)
         # Still usable then: the tool in the clone takes the run when it is free.
-        self.start_clone.setEnabled(not data.busy())
+        self.start_clone.setEnabled(not data.busy() and clone_flow.available())
+        self.clone_hint.set_text(clone_flow.background_status())
         self.autorun_box.set_checked_quietly(autorun.enabled())
         # Leo 2026-10-09: players must see that it is about to start by itself.
         left = autorun.seconds_left()

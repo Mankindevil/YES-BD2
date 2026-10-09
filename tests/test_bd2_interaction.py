@@ -2,6 +2,8 @@ import threading
 import unittest
 from unittest.mock import patch
 
+from ok.task.exceptions import TaskDisabledException
+
 from src.interaction.BD2Interaction import BD2Interaction
 
 
@@ -19,6 +21,25 @@ def make_interaction():
 
 
 class BD2InteractionOperateTest(unittest.TestCase):
+    def test_stop_propagates_without_error_log_and_releases_input(self):
+        interaction, calls = make_interaction()
+        error = TaskDisabledException()
+
+        def stop():
+            raise error
+
+        with (
+            patch("src.interaction.BD2Interaction.GetCursorPos", return_value=(7, 8)),
+            patch("src.interaction.BD2Interaction.logger.error") as log_error,
+        ):
+            with self.assertRaises(TaskDisabledException) as caught:
+                interaction.operate(stop, block=True)
+        self.assertIs(caught.exception, error)
+        log_error.assert_not_called()
+        self.assertFalse(interaction._operating)
+        self.assertEqual(calls, ["block_input", "restore_cursor", "unblock_input"])
+        self.assertTrue(interaction.wait_until_idle(timeout=0))
+
     def test_operate_reraises_callback_exception_and_cleans_up(self):
         interaction, calls = make_interaction()
         error = ValueError("boom")

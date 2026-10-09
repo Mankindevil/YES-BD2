@@ -6,6 +6,7 @@ from unittest import mock
 
 from src.tasks import takeover
 from src.tasks.takeover import (
+    LLKHF_ALTDOWN,
     LLKHF_INJECTED,
     LLMHF_INJECTED,
     TakeoverMonitor,
@@ -17,6 +18,12 @@ LBUTTONDOWN, MOUSEMOVE, KEYDOWN, KEYUP = 0x0201, 0x0200, 0x0100, 0x0101
 
 
 class RulesTest(unittest.TestCase):
+    def test_alt_tab_does_not_stop_but_plain_tab_still_does(self):
+        for message in (KEYDOWN, takeover.WM_SYSKEYDOWN):
+            self.assertFalse(key_takeover(message, LLKHF_ALTDOWN, 0x09, True))
+        self.assertTrue(key_takeover(KEYDOWN, 0, 0x09, True))
+        self.assertTrue(key_takeover(takeover.WM_SYSKEYDOWN, LLKHF_ALTDOWN, ord("W"), True))
+
     def test_real_click_on_the_game(self):
         self.assertTrue(mouse_takeover(LBUTTONDOWN, 0, True, game_in_front=True))
 
@@ -90,8 +97,8 @@ class MonitorTest(unittest.TestCase):
             self._click(monitor, 100)
             executor.stop_current_task.assert_not_called()
 
-    def _key(self, monitor, vk=0x27):
-        data = SimpleNamespace(flags=0, vkCode=vk)
+    def _key(self, monitor, vk=0x27, flags=0):
+        data = SimpleNamespace(flags=flags, vkCode=vk)
         with (
             mock.patch("win32gui.GetForegroundWindow", return_value=100),
             mock.patch("win32gui.GetAncestor", side_effect=lambda h, _flag: h),
@@ -102,6 +109,14 @@ class MonitorTest(unittest.TestCase):
         monitor, executor, _task = self._monitor()
         monitor.in_clone = False
         self._key(monitor)
+        executor.stop_current_task.assert_called_once()
+
+    def test_alt_tab_before_focus_changes_does_not_stop(self):
+        monitor, executor, _task = self._monitor()
+        monitor.in_clone = False
+        self._key(monitor, vk=0x09, flags=LLKHF_ALTDOWN)
+        executor.stop_current_task.assert_not_called()
+        self._key(monitor, vk=0x09)
         executor.stop_current_task.assert_called_once()
 
     def test_input_on_the_clone_never_stops_the_run(self):

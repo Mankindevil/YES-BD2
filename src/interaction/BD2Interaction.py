@@ -7,6 +7,7 @@ import win32api
 import win32con
 import win32gui
 from ok.device.intercation import INPUT, MOUSEINPUT, PostMessageInteraction, SendInput
+from ok.task.exceptions import TaskDisabledException
 from ok.util.logger import Logger
 from win32api import GetCursorPos, SetCursorPos
 
@@ -174,6 +175,10 @@ class BD2Interaction(PostMessageInteraction):
                 self.block_input()
             try:
                 result = fun()
+            except TaskDisabledException:
+                # Stop/takeover is control flow. Let the executor finish the
+                # task, while the finally block still releases input.
+                raise
             except Exception as e:
                 logger.error("operate exception", e)
                 raise

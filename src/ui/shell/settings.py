@@ -292,32 +292,50 @@ class SettingsPage(Page):
                 box.blockSignals(False)
 
     def _build_clone(self) -> None:
-        """Only 还原 lives here; 桌面分身 itself starts from 首页 (Leo, 2026-10-03)."""
+        """Keep setup discoverable before the first background run."""
         from src.utils import clone_desktop
 
         self._clone = clone_desktop
-        self.clone_section = Text("桌面分身", "eyebrow")
+        self.clone_section = Text("后台运行（桌面分身）", "eyebrow")
         self.body.addWidget(self.clone_section)
         self.clone_card = Card()
         column = vbox(self.clone_card, (16, 8, 16, 8), 0)
         self.body.addWidget(self.clone_card)
-        column.addWidget(
-            HubRow(
-                "rotate-ccw",
-                "还原桌面分身",
-                "把第一次设定改的 Windows 设定全部改回去",
-                control=Button(
-                    "还原", "secondary", "rotate-ccw", size="sm", on_click=self._clone_undo
-                ),
-            )
+        self.clone_setup_button = Button(
+            "设置", "secondary", "monitor", size="sm", on_click=self._clone_setup
         )
+        self.clone_status_row = HubRow("monitor", "后台运行", control=self.clone_setup_button)
+        column.addWidget(self.clone_status_row)
+        self.clone_undo_row = HubRow(
+            "rotate-ccw",
+            "还原桌面分身",
+            "把第一次设定改的 Windows 设定全部改回去",
+            control=Button(
+                "还原", "secondary", "rotate-ccw", size="sm", on_click=self._clone_undo
+            ),
+        )
+        column.addWidget(self.clone_undo_row)
         self._refresh_clone()
 
     def _refresh_clone(self) -> None:
+        from src.ui.shell import clone_flow
+
         clone = self._clone
-        show = clone.supported() and clone.ready() and not clone.in_clone()
+        show = not clone.in_clone()
         self.clone_section.setVisible(show)
         self.clone_card.setVisible(show)
+        self.clone_status_row.set_sub(clone_flow.background_status())
+        self.clone_setup_button.setEnabled(clone.supported() and not data.busy())
+        self.clone_setup_button.setText(t("查看设置" if clone.ready() else "第一次设定"))
+        self.clone_undo_row.setVisible(clone.ready() or clone.SETUP_STATE.exists())
+        self.clone_undo_row.setEnabled(not data.busy())
+
+    def _clone_setup(self) -> None:
+        from src.ui.shell import clone_flow
+
+        if not data.busy():
+            clone_flow.prepare_background(self.window(), for_run=False)
+            self._refresh_clone()
 
     def _clone_undo(self) -> None:
         from qfluentwidgets import MessageBox

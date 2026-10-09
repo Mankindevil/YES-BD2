@@ -85,14 +85,49 @@ def available() -> bool:
     return clone_desktop.supported() and not clone_desktop.in_clone()
 
 
-def ask_and_start(window, task, run_mode: str | None = None) -> bool:
-    """Leo (2026-10-03, 10:37): remind first, then 前往 goes into the clone."""
-    from qfluentwidgets import MessageBox
+def background_status() -> str:
+    """Explain how to get a background run without silently hiding the feature."""
+    if clone_desktop.in_clone():
+        return "当前已在桌面分身中运行"
+    if not clone_desktop.supported():
+        return "此系统不支持桌面分身，需要 Windows 专业版或企业版"
+    if clone_desktop.viewer_removed():
+        return "分身程序缺失，请到设置重新设定"
+    if not clone_desktop.ready():
+        return "尚未设置：首次使用请先设置桌面分身"
+    if clone_desktop.hello_only():
+        return "需要调整登录选项，允许使用账户密码登录"
+    return "已就绪：分身窗口可最小化，进度、暂停和停止仍在本窗口操作"
 
+
+def ask_and_start(window, task, run_mode: str | None = None) -> bool:
     if task is None or data.busy():
         return False
+    if not prepare_background(window):
+        return False
+    return open_clone(window, task, run_mode)
+
+
+def prepare_background(window, *, for_run: bool = True) -> bool:
+    """Shared setup/help entry; settings never starts a task by itself."""
+    from qfluentwidgets import MessageBox
+
+    if not available():
+        message(window, background_status(), error=True)
+        return False
+    if data.busy():
+        return False
+    # A modal dialog still runs Qt timers. Do not let the ordinary-desktop
+    # countdown start a task while the player is setting up the clone.
+    from src.ui.shell import autorun
+
+    autorun.cancel()
     # Leo (2026-10-03 14:35): short bullet points.
-    intro = "• 纯后台执行：游戏在独立的分身窗口里跑，缩小也照跑\n• 照常用电脑，鼠标键盘不会被抢"
+    intro = (
+        "• 游戏在桌面分身里后台运行，不占用当前桌面的鼠标键盘\n"
+        "• 可以最小化分身窗口，请勿关闭、注销或让电脑睡眠\n"
+        "• 进度、暂停和停止都在当前工具窗口操作"
+    )
     hello = clone_desktop.hello_only()
     if clone_desktop.viewer_removed():
         steps = tf(
@@ -105,8 +140,10 @@ def ask_and_start(window, task, run_mode: str | None = None) -> bool:
     elif not clone_desktop.ready():
         steps = t((
             "第一次要先设定：\n"
+            "• 创建分身程序，开启 Windows 子会话及最小化后继续绘图\n"
+            "• 不开启外部远程桌面访问，设定可在设置里还原\n"
             "• 会跳出 Windows 确认，请按「是」\n"
-            "• 设定好后再按一次这个按钮"
+            "• 设定好后回到首页，按「后台运行（桌面分身）」"
         ))
         yes = "第一次设定"
     elif hello:
@@ -124,20 +161,29 @@ def ask_and_start(window, task, run_mode: str | None = None) -> bool:
             "• 第一次要打账户密码（不是 PIN），之后会记住\n"
             "• 游戏和日常自动开始，进度在这里看"
         ))
-        yes = "前往"
+        if not for_run:
+            steps = t("已经设置好。回到首页按「后台运行（桌面分身）」即可开始。")
+        yes = "开始后台运行" if for_run else "知道了"
     # Translated in parts: the catalogs hold each part, not the joined text.
-    box = MessageBox(t("在桌面分身跑"), t(intro) + "\n\n" + steps, window)
+    box = MessageBox(t("后台运行（桌面分身）"), t(intro) + "\n\n" + steps, window)
     box.yesButton.setText(t(yes))
     box.cancelButton.setText(t("取消"))
     if not box.exec():
         return False
+    if data.busy():
+        message(window, "任务已经开始，请先停止后再设置或启动后台运行", error=True)
+        return False
     if not clone_desktop.ready():
-        clone_desktop.run_setup()
+        try:
+            clone_desktop.run_setup()
+        except OSError as exc:
+            logger.warning(f"clone setup could not start: {exc}")
+            message(window, "无法打开分身设置程序，请查看日志后重试", error=True)
         return False
     if hello:
         clone_desktop.open_sign_in_options()
         return False
-    return open_clone(window, task, run_mode)
+    return for_run
 
 
 def busy_in_clone() -> bool:
@@ -284,7 +330,8 @@ def open_clone(window, task=None, run_mode: str | None = None) -> bool:
             message(
                 window,
                 tf(
-                    "分身程序打不开，可能被防毒软件挡住了：请把 {folder} 设为信任，再到「设置」按「第一次设定」",
+                    "分身程序打不开，可能被防毒软件挡住了：请把 {folder} 设为信任，"
+                    "再到「设置」按「第一次设定」",
                     folder=str(clone_desktop.DATA_DIR),
                 ),
                 error=True,
@@ -397,7 +444,9 @@ def _run_pending_job() -> None:
 
 def _reload_settings() -> None:
     """Take the settings the tool outside saved before running its job here."""
-    configs = [getattr(task, "config", None) for task in data.onetime_tasks() + data.trigger_tasks()]
+    configs = [
+        getattr(task, "config", None) for task in data.onetime_tasks() + data.trigger_tasks()
+    ]
     global_config = getattr(data.executor(), "global_config", None)
     configs += list((getattr(global_config, "configs", None) or {}).values())
     for config in configs:
@@ -406,7 +455,9 @@ def _reload_settings() -> None:
         try:
             clone_desktop.reload_config(config)
         except Exception as error:
-            logger.warning(f"clone job: reloading {getattr(config, 'config_file', '?')} failed: {error}")
+            logger.warning(
+                f"clone job: reloading {getattr(config, 'config_file', '?')} failed: {error}"
+            )
 
 
 def _get_out_of_the_way() -> None:
@@ -586,7 +637,9 @@ def _keep_game_in_front() -> None:
         seen = (name or pid, win32gui.GetWindowText(front))
         if _front_check.get("seen") != seen:
             _front_check["seen"] = seen
-            logger.info(f"clone: {seen[0]} 「{seen[1]}」 was in front of the game, game brought back")
+            logger.info(
+                f"clone: {seen[0]} 「{seen[1]}」 was in front of the game, game brought back"
+            )
     from src.tasks.BaseBD2Task import _set_foreground_attached
 
     _set_foreground_attached(game)
