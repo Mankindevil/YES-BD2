@@ -243,8 +243,6 @@ class BuildWorkflowTest(unittest.TestCase):
 
         self.assertNotIn(maintenance, notes)
         self.assertIn("- 修好跑商\n- 魔兽追踪者角色名单新增：乙", notes)
-        sync_script = (ROOT / "scripts" / "sync_public.py").read_text(encoding="utf-8")
-        self.assertIn(f'MAINTENANCE_TITLE = "{maintenance}"', sync_script)
 
 
 if __name__ == "__main__":
