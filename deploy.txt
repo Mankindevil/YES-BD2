@@ -13,4 +13,5 @@ pyappify
 assets
 ok_templates
 recognition-assets/template-assets
+tools/clone_desktop
 pyappify.yml
