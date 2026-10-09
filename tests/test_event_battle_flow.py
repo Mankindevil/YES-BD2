@@ -86,8 +86,14 @@ class FailureSettleTest(unittest.TestCase):
 
 class ApReadingTest(unittest.TestCase):
     def test_currency_glued_to_the_pool_is_not_read_as_ap(self):
-        self.assertEqual((None, 0), parse_ap("8,5000/5"))
+        self.assertEqual((0, 0), parse_ap("8,5000/5"))
         self.assertEqual((0, 3), parse_ap("8,500 0/5 +3"))
+
+    def test_currency_glued_to_a_full_pool(self):
+        # Live 2026-10-09 (桌面分身, 1920x1080): OCR read 5,900 and 5/5 as one.
+        self.assertEqual((5, 0), parse_ap("5,9005/5"))
+        self.assertEqual((3, 2), parse_ap("12,3453/5 +2"))
+        self.assertEqual((5, 0), parse_ap("21:59 10,000 5/5"))
 
     def test_ap_spent_counts_free_and_bonus(self):
         before = {"free_ap": 5, "bonus_ap": 3}

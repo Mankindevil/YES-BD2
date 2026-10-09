@@ -48,12 +48,17 @@ if ([string]::IsNullOrWhiteSpace($previousTag)) {
 }
 $global:LASTEXITCODE = 0
 
+# sync_public.py titles a sync that changes nothing in the tool with this
+# line, and joins several player notes of one release with 「；」.
+$maintenanceTitle = "开发和测试调整，不影响工具使用"
 $entries = [System.Collections.Generic.List[string]]::new()
 if ($previousTag) {
     foreach ($subject in @(git log --format=%s "$previousTag..$releaseCommit")) {
-        $line = "$subject".Trim()
-        if ($line) {
-            $entries.Add("- $line")
+        foreach ($part in ("$subject" -split "；")) {
+            $line = $part.Trim()
+            if ($line -and $line -ne $maintenanceTitle -and -not $entries.Contains("- $line")) {
+                $entries.Add("- $line")
+            }
         }
     }
 }

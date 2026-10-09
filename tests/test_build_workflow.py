@@ -229,6 +229,23 @@ class BuildWorkflowTest(unittest.TestCase):
         self.assertIn("- 魔獸戰加快", notes)
         self.assertNotIn("- YES-BD2", notes)
 
+    def test_release_notes_leave_out_maintenance_and_split_joined_notes(self):
+        maintenance = "开发和测试调整，不影响工具使用"
+        notes = self._release_notes(
+            [
+                ("YES-BD2", "v0.1.1"),
+                (maintenance, None),
+                (maintenance, None),
+                ("修好跑商；魔兽追踪者角色名单新增：乙", "v0.1.2"),
+            ],
+            "v0.1.2",
+        )
+
+        self.assertNotIn(maintenance, notes)
+        self.assertIn("- 修好跑商\n- 魔兽追踪者角色名单新增：乙", notes)
+        sync_script = (ROOT / "scripts" / "sync_public.py").read_text(encoding="utf-8")
+        self.assertIn(f'MAINTENANCE_TITLE = "{maintenance}"', sync_script)
+
 
 if __name__ == "__main__":
     unittest.main()
