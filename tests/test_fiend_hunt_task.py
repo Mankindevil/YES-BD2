@@ -253,12 +253,13 @@ class RecordTaskTest(unittest.TestCase):
     def test_record_key_is_an_f_key(self):
         task = bare_task(FiendHuntRecordTask)
         self.assertEqual("F8", task.default_config["录制按键"])
-        self.assertEqual([f"F{n}" for n in range(6, 11)], task.config_type["录制按键"]["options"])
+        self.assertEqual([f"F{n}" for n in range(6, 13)], task.config_type["录制按键"]["options"])
         self.assertEqual(0x75, key_code("F6"))
         self.assertEqual(VK_F8, key_code("F8"))
         self.assertEqual(0x79, key_code("F10"))
         self.assertEqual(VK_F8, key_code("A"))
-        self.assertEqual(VK_F8, key_code("F12"))  # outside F6-F10
+        self.assertEqual(0x7B, key_code("F12"))
+        self.assertEqual(VK_F8, key_code("F13"))  # outside F6-F12
 
     def test_without_a_save_it_points_to_the_page(self):
         task = bare_task(FiendHuntRecordTask)

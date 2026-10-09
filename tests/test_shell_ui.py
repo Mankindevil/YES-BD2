@@ -571,10 +571,6 @@ class SaleDayTickTest(unittest.TestCase):
         self.assertIsNot(page._panel_checks["面包"], boxes["面包"])
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class StartStaysOnFiendPageTest(unittest.TestCase):
     """Leo 2026-10-06: 录制/开始打 on the 魔兽追踪者 page don't jump to 首页."""
 
@@ -601,3 +597,34 @@ class StartStaysOnFiendPageTest(unittest.TestCase):
         shell, shown = self.shell("map")
         Shell._after_start(shell)
         self.assertEqual(["home"], shown)
+
+
+class SidebarHomeLeavesSummaryTest(unittest.TestCase):
+    """Leo 2026-10-09: 首页 in the sidebar on a finished run's 结算 goes home."""
+
+    def shell(self):
+        from types import SimpleNamespace
+
+        left = []
+        home = SimpleNamespace(leave_summary=lambda: left.append(True))
+        shown = []
+        shell = SimpleNamespace(pages={"home": home, "map": object()}, navigate=shown.append)
+        return shell, shown, left
+
+    def test_home_leaves_the_summary(self):
+        from src.ui.shell.install import Shell
+
+        shell, shown, left = self.shell()
+        Shell._sidebar_clicked(shell, "home")
+        self.assertEqual(([True], ["home"]), (left, shown))
+
+    def test_other_pages_keep_it(self):
+        from src.ui.shell.install import Shell
+
+        shell, shown, left = self.shell()
+        Shell._sidebar_clicked(shell, "map")
+        self.assertEqual(([], ["map"]), (left, shown))
+
+
+if __name__ == "__main__":
+    unittest.main()

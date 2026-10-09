@@ -1,5 +1,9 @@
 ﻿param(
     [string]$Version = "v1.2.3",
+    # The version our patched launcher reports. Installed launchers replace
+    # themselves only with a higher one (ok's update_pyappify), so bump this
+    # whenever the launcher patches below change.
+    [string]$LauncherVersion = "1.2.4",
     [string]$BuildDir = "pyappify_build",
     [ValidateSet("zlib", "lzma")]
     [string]$NsisCompression = "lzma",
@@ -238,7 +242,7 @@ if (Test-Path -LiteralPath $iconsSource) {
 $tauriConfPath = Join-Path $buildPath "src-tauri\tauri.conf.json"
 $tauriConf = Get-Content -LiteralPath $tauriConfPath -Raw
 $tauriConf = $tauriConf.Replace('"pyappify"', '"' + $appName + '"')
-$tauriConf = $tauriConf.Replace('"0.0.1"', '"' + $Version.TrimStart("v") + '"')
+$tauriConf = $tauriConf.Replace('"0.0.1"', '"' + $LauncherVersion.TrimStart("v") + '"')
 $tauriConfObject = $tauriConf | ConvertFrom-Json
 $tauriConfObject.bundle.windows.nsis | Add-Member `
     -MemberType NoteProperty `
@@ -298,20 +302,115 @@ $appTsx = $appTsx.Replace(
 Set-Content -LiteralPath $appTsxPath -Value $appTsx -Encoding UTF8
 
 $appServicePath = Join-Path $buildPath "src-tauri\src\app_service.rs"
-$appService = Get-Content -LiteralPath $appServicePath -Raw
-$appService = $appService.Replace(
-    "async fn check_running_on_start(app_name: &str, working_dir: &Path) -> Result<()> {",
-    "async fn check_running_on_start(`r`n    app_handle: &AppHandle,`r`n    app_name: &str,`r`n    working_dir: &Path,`r`n) -> Result<()> {"
-)
-$appService = $appService.Replace(
-    "            emit_apps().await;`r`n            return Ok(());",
-    "            emit_apps().await;`r`n            if let Some(window) = app_handle.get_webview_window(`"main`") {`r`n                if let Err(e) = window.hide() {`r`n                    warn!(`r`n                        `"Failed to hide main window after app '{}' started: {:?}`",`r`n                        app_name, e`r`n                    );`r`n                }`r`n            }`r`n            return Ok(());"
-)
-$appService = $appService.Replace(
-    "    check_running_on_start(&app_name, &working_dir).await?;",
-    "    check_running_on_start(&app_handle, &app_name, &working_dir).await?;"
-)
+$libRsPath = Join-Path $buildPath "src-tauri\src\lib.rs"
+$i18nPath = Join-Path $buildPath "src\i18n.ts"
+
+# Every patch below must hit exactly once, or the build fails loudly (the old
+# hide-window patch searched text v1.2.3 no longer has and silently did nothing).
+function Replace-Once([string]$Text, [string]$Search, [string]$Replacement, [string]$What) {
+    $count = ([regex]::Matches($Text, [regex]::Escape($Search))).Count
+    if ($count -ne 1) {
+        throw "Launcher patch '$What' expected exactly 1 match but found $count; update prepare_pyappify_launcher.ps1."
+    }
+    return $Text.Replace($Search, $Replacement)
+}
+
+# git on Windows may check the sources out with CRLF; the searches below are LF.
+$appService = (Get-Content -LiteralPath $appServicePath -Raw -Encoding UTF8) -replace "`r`n", "`n"
+$libRs = (Get-Content -LiteralPath $libRsPath -Raw -Encoding UTF8) -replace "`r`n", "`n"
+$appTsx = (Get-Content -LiteralPath $appTsxPath -Raw -Encoding UTF8) -replace "`r`n", "`n"
+$i18n = (Get-Content -LiteralPath $i18nPath -Raw -Encoding UTF8) -replace "`r`n", "`n"
+
+# Hide the launcher window once the tool is seen running.
+$appService = Replace-Once $appService `
+    ("            emit_app().await;`n            return Ok(true);") `
+    ("            emit_app().await;`n" +
+     "            if let Some(window) = get_app_handle().and_then(|handle| handle.get_webview_window(`"main`")) {`n" +
+     "                if let Err(e) = window.hide() {`n" +
+     "                    warn!(`"Failed to hide main window after app '{}' started: {:?}`", app_name, e);`n" +
+     "                }`n" +
+     "            }`n" +
+     "            return Ok(true);") `
+    "hide the launcher once the tool runs"
+
+# The auto start waited 10 s with nothing on screen, so players thought it did
+# nothing (Leo 10-09): it now waits 5 s, says 「5 秒後自動啟動」 next to the
+# switch with a 取消 button, then 「正在啟動…」 until the tool is up.
+$appService = Replace-Once $appService `
+    'info!("Scheduling auto-start for ''{}'' in 10 seconds.", app.name);' `
+    ('info!("Scheduling auto-start for ''{}'' in 5 seconds.", app.name);' + "`n" + '                emitter::emit("auto_start_scheduled", 5u64);') `
+    "announce the auto start"
+$appService = Replace-Once $appService `
+    'tokio::time::sleep(Duration::from_secs(10)).await;' `
+    'tokio::time::sleep(Duration::from_secs(5)).await;' `
+    "auto start after 5 s"
+$appService = Replace-Once $appService `
+    'pub(crate) async fn emit_app() {' `
+    ("#[tauri::command]`n" +
+     "pub async fn cancel_auto_start() -> Result<(), Error> {`n" +
+     "    AUTO_START_CANCELLED.store(true, AtomicOrdering::SeqCst);`n" +
+     "    info!(`"Delayed auto-start cancelled by the user.`");`n" +
+     "    Ok(())`n" +
+     "}`n`n" +
+     'pub(crate) async fn emit_app() {') `
+    "cancel command"
+$libRs = Replace-Once $libRs `
+    '    setup_app, start_app, stop_app, update_app_preferences, update_to_version, StartupOverrides,' `
+    '    cancel_auto_start, setup_app, start_app, stop_app, update_app_preferences, update_to_version, StartupOverrides,' `
+    "import the cancel command"
+$libRs = Replace-Once $libRs `
+    '                start_app,' `
+    ("                start_app,`n                cancel_auto_start,") `
+    "register the cancel command"
+
+$appTsx = Replace-Once $appTsx `
+    'const [startingAppName, setStartingAppName] = useState<string | null>(null);' `
+    ('const [startingAppName, setStartingAppName] = useState<string | null>(null);' + "`n" +
+     '    const [autoStartAt, setAutoStartAt] = useState<number | null>(null);' + "`n" +
+     '    const [, setAutoStartTick] = useState(0);' + "`n" +
+     '    useEffect(() => {' + "`n" +
+     '        if (autoStartAt === null) return;' + "`n" +
+     '        const timer = window.setInterval(() => setAutoStartTick(tick => tick + 1), 500);' + "`n" +
+     '        return () => window.clearInterval(timer);' + "`n" +
+     '    }, [autoStartAt]);') `
+    "auto start countdown state"
+$appTsx = Replace-Once $appTsx `
+    'unlistenPromises.push(listen<App>("app", (event) => {' `
+    ('unlistenPromises.push(listen<number>("auto_start_scheduled", (event) => {' + "`n" +
+     '            setAutoStartAt(Date.now() + event.payload * 1000);' + "`n" +
+     '        }));' + "`n" +
+     '        unlistenPromises.push(listen<App>("app", (event) => {') `
+    "auto start countdown listener"
+$autoStartLabel = "{t('Auto Start')}</Typography>}`n" + (" " * 60) + "/>`n" + (" " * 56) + ")}"
+$appTsx = Replace-Once $appTsx $autoStartLabel `
+    ($autoStartLabel + "`n" +
+     (" " * 56) + "{app.installed && !app.running && app.auto_start && autoStartAt !== null && autoStartAt > Date.now() - 30000 && (`n" +
+     (" " * 60) + "<Typography variant=`"body2`" color=`"primary`" sx={{fontWeight: 600, ml: 1}}>`n" +
+     (" " * 64) + "{autoStartAt > Date.now() ? t('autoStartIn', {n: Math.ceil((autoStartAt - Date.now()) / 1000)}) : t('autoStarting')}`n" +
+     (" " * 60) + "</Typography>`n" +
+     (" " * 56) + ")}`n" +
+     (" " * 56) + "{app.installed && !app.running && app.auto_start && autoStartAt !== null && autoStartAt > Date.now() && (`n" +
+     (" " * 60) + "<Button size=`"small`" variant=`"outlined`" color=`"warning`" sx={{ml: 1}} onClick={() => { invoke('cancel_auto_start').catch(() => {}); setAutoStartAt(null); }}>{t('Cancel')}</Button>`n" +
+     (" " * 56) + ")}") `
+    "auto start countdown and cancel"
+foreach ($entry in @(
+    @("Auto Start", "Auto-starting in {{n}} s", "Starting..."),
+    @("自动启动", "{{n}} 秒后自动启动", "正在启动…"),
+    @("自動啟動", "{{n}} 秒後自動啟動", "正在啟動…"),
+    @("自動起動", "{{n}} 秒後に自動起動", "起動中…"),
+    @("자동 시작", "{{n}}초 후 자동 시작", "시작 중…"),
+    @("Inicio Automático", "Inicio automático en {{n}} s", "Iniciando...")
+)) {
+    $line = '"Auto Start": "' + $entry[0] + '"'
+    $i18n = Replace-Once $i18n $line `
+        ($line + ",`n            `"autoStartIn`": `"" + $entry[1] + "`",`n            `"autoStarting`": `"" + $entry[2] + "`"") `
+        ("auto start text " + $entry[0])
+}
+
 Set-Content -LiteralPath $appServicePath -Value $appService -Encoding UTF8
+Set-Content -LiteralPath $libRsPath -Value $libRs -Encoding UTF8
+Set-Content -LiteralPath $appTsxPath -Value $appTsx -Encoding UTF8
+Set-Content -LiteralPath $i18nPath -Value $i18n -Encoding UTF8
 
 Update-InstallerNsiTemplate -BuildDirPath $buildPath
 

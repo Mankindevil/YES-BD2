@@ -426,7 +426,7 @@ class NewRecordScreenTest(unittest.TestCase):
 class NewRecordFlowTest(unittest.TestCase):
     """The battle ends on the field whether or not 创造新纪录 shows up."""
 
-    def _run(self, screens):
+    def _run(self, screens, cleanup=False):
         from types import SimpleNamespace
         from unittest import mock
 
@@ -467,7 +467,13 @@ class NewRecordFlowTest(unittest.TestCase):
             return [SimpleNamespace(name=wanted, x=0, y=0, width=10, height=10)] if wanted else []
 
         task._reference_boxes = boxes
-        self.assertTrue(task._fight())
+        if cleanup:
+            homes = []
+            task._field_to_home = lambda: homes.append(1) or True
+            task._leave_result_after_failure()
+            self.assertEqual([1], homes)
+        else:
+            self.assertTrue(task._fight())
         return clicks
 
     def test_without_record(self):
@@ -485,7 +491,37 @@ class NewRecordFlowTest(unittest.TestCase):
             ["page", "record", "page"], self._run(["page", "record", "page", "field"])
         )
 
+    def test_leaving_onto_the_doom_page(self):
+        self.assertEqual(
+            ["page", "result", "record", "page"],
+            self._run(["page", "result", "record", "page", "field"]),
+        )
+
+    def test_failure_cleanup_leaving_onto_the_doom_page(self):
+        # Leo's 4K log 10-09: 离开 led to the 末日之书 page, not the field.
+        self.assertEqual(["result", "page"], self._run(["result", "page", "field"], cleanup=True))
+
     def test_record_after_leaving(self):
         self.assertEqual(
             ["page", "result", "record"], self._run(["page", "result", "record", "field"])
         )
+
+
+class DoomPageAfterRecordTest(unittest.TestCase):
+    """Leo's 10-09 screens (1080 clone, 4K desktop) after 创造新纪录."""
+
+    def test_read_as_the_doom_page_not_the_record_or_field(self):
+        try:
+            vision = _real_ocr_vision()
+        except ImportError as missing:
+            self.skipTest(f"OCR engine unavailable: {missing}")
+        from src.tasks.DoomBookTask import DoomBookTask
+
+        task = object.__new__(DoomBookTask)
+        task.info_set = lambda *a: None
+        task._quick_vision = lambda: vision
+        for name in ("doom_page_after_record_1080.jpg", "doom_page_after_record_4k.jpg"):
+            frame = load(FIXTURES / "doom" / name)
+            self.assertTrue(task._doom_page_visible(frame), name)
+            self.assertFalse(task._new_record_visible(frame), name)
+            self.assertFalse(task._field_visible(frame), name)

@@ -48,6 +48,10 @@ from src.tasks.map_trade.collector_constants import (
     SkillExecutionResult,
     SkillFeedbackObservation,
 )
+from src.tasks.map_trade.collector_skills import (
+    PIPELINE_CLICK_INTERVAL,
+    PRESS_AGAIN_PAUSE_SECONDS,
+)
 from src.tasks.map_trade.models import (
     CARD_BY_ID,
     CollectionActionState,
@@ -1258,6 +1262,149 @@ class CollectorSkillTest(unittest.TestCase):
         self.assertTrue(result.completed)
         self.assertFalse(result.depleted)
         self.assertEqual(3, len(clicks))
+
+    def _missed_press_collector(
+        self, missed_presses, *, skill="召集", toast=None, steady=True
+    ):
+        """``skill`` ignores its first ``missed_presses`` presses: the icon
+        stays bright and the count does not move.  ``toast`` is what the
+        missed press shows; ``steady`` is whether its count reads steadily."""
+
+        collector, clicks, statuses, progress = self._skill_collector(
+            {
+                "吸收": ActionIconState.AVAILABLE,
+                "召集": ActionIconState.AVAILABLE,
+                "制服": ActionIconState.AVAILABLE,
+            },
+            {},
+        )
+        taken = {"吸收": 0, "召集": 0, "压制": 0}
+        base = {"吸收": (4, 21), "召集": (2, 21), "压制": (6, 60)}
+
+        def read_count(action, _detection=None, **_kwargs):
+            collector._last_count_window_stable = steady
+            return (base[action.name][0] + taken[action.name], base[action.name][1])
+
+        collector._read_count_window = read_count
+        presses = {skill: 0}
+        succeed = collector._read_action_feedback
+
+        def feedback(action):
+            if action.name == skill:
+                presses[skill] += 1
+                if presses[skill] <= missed_presses:
+                    if toast is None:
+                        return SkillFeedbackObservation("", None, 0.0)
+                    return SkillFeedbackObservation(toast, "success", 1.0)
+            taken[action.name] += 1
+            return succeed(action)
+
+        collector._read_action_feedback = feedback
+        return collector, clicks, statuses, progress, taken
+
+    def test_missed_summon_press_is_pressed_again(self):
+        # A player 2026-10-09: 「跑图召集点的太快了经常点不上失败」.
+        collector, clicks, statuses, _progress, taken = self._missed_press_collector(1)
+        sleeps = []
+        collector.task.sleep = lambda seconds: sleeps.append(seconds)
+
+        result = collector._use_actions(
+            BATTLE_ACTIONS,
+            card_id="Q_sp1",
+            map_role=CollectionMapRole.BATTLE_AREA_1,
+        )
+
+        self.assertTrue(result.completed, result.message)
+        # 吸收, 召集 (missed), 压制, then 召集 once more; nothing twice.
+        self.assertEqual(4, len(clicks))
+        self.assertEqual({"吸收": 1, "召集": 1, "压制": 1}, taken)
+        self.assertIn(PRESS_AGAIN_PAUSE_SECONDS, sleeps)
+        self.assertTrue(any("补按" in str(value) for _key, value in statuses))
+
+    def test_summon_is_pressed_again_once_and_then_left_alone(self):
+        # Leo 2026-10-09: 「补按后 你就不要管了」.
+        collector, clicks, _statuses, progress, taken = self._missed_press_collector(99)
+
+        result = collector._use_actions(
+            BATTLE_ACTIONS,
+            card_id="Q_sp1",
+            map_role=CollectionMapRole.BATTLE_AREA_1,
+        )
+
+        self.assertTrue(result.completed, result.message)
+        self.assertEqual(4, len(clicks))
+        self.assertEqual({"吸收": 1, "召集": 0, "压制": 1}, taken)
+        record = progress.get_action_record("Q_sp1", CollectionMapRole.BATTLE_AREA_1, "召集")
+        self.assertEqual(CollectionActionState.SETTLED.value, record["state"])
+
+    def test_press_with_success_toast_is_not_pressed_again(self):
+        # Leo 2026-10-09: a press that took must never be pressed again.
+        # 压制 stays bright after it takes, so a misread count alone must
+        # not bring a second press.
+        collector, clicks, _statuses, _progress, _taken = self._missed_press_collector(
+            1, skill="压制", toast="成功反馈"
+        )
+
+        result = collector._use_actions(
+            BATTLE_ACTIONS,
+            card_id="Q_sp1",
+            map_role=CollectionMapRole.BATTLE_AREA_1,
+        )
+
+        self.assertFalse(result.completed)
+        self.assertEqual(3, len(clicks))
+
+    def test_press_with_unsteady_count_is_not_pressed_again(self):
+        collector, clicks, _statuses, _progress, _taken = self._missed_press_collector(
+            1, skill="压制", steady=False
+        )
+
+        result = collector._use_actions(
+            BATTLE_ACTIONS,
+            card_id="Q_sp1",
+            map_role=CollectionMapRole.BATTLE_AREA_1,
+        )
+
+        self.assertFalse(result.completed)
+        self.assertEqual(3, len(clicks))
+
+    def test_missed_suppress_press_is_pressed_again(self):
+        collector, clicks, _statuses, _progress, taken = self._missed_press_collector(
+            1, skill="压制"
+        )
+
+        result = collector._use_actions(
+            BATTLE_ACTIONS,
+            card_id="Q_sp1",
+            map_role=CollectionMapRole.BATTLE_AREA_1,
+        )
+
+        self.assertTrue(result.completed, result.message)
+        self.assertEqual(4, len(clicks))
+        self.assertEqual({"吸收": 1, "召集": 1, "压制": 1}, taken)
+
+    def test_skill_presses_are_spaced_by_the_click_interval(self):
+        collector, clicks, _statuses, _progress, _taken = self._missed_press_collector(0)
+        events = []
+        collector.task.sleep = lambda seconds: events.append(seconds)
+        click = collector.vision.click_client
+        collector.vision.click_client = lambda *args, **kwargs: (
+            events.append("click"),
+            click(*args, **kwargs),
+        )
+
+        collector._use_actions(
+            BATTLE_ACTIONS,
+            card_id="Q_sp1",
+            map_role=CollectionMapRole.BATTLE_AREA_1,
+        )
+
+        self.assertEqual(0.8, PIPELINE_CLICK_INTERVAL)
+        presses = [index for index, event in enumerate(events) if event == "click"]
+        self.assertEqual(3, len(presses))
+        for previous, current in zip(presses, presses[1:]):
+            waits = [value for value in events[previous + 1:current] if value != "click"]
+            self.assertGreater(sum(waits), 0.7)
 
     def test_suppression_count_roi_uses_manual_fixed_region(self):
         frame = np.zeros((1080, 1920, 3), dtype=np.uint8)

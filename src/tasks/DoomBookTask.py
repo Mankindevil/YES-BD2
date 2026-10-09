@@ -273,6 +273,16 @@ class DoomBookTask(_ClaimTaskBase):
         self.log_info(f"{LABEL}：末日之书页按返回后没有回到地图。")
         return False
 
+    def _field_or_doom_page(self, frame) -> bool:
+        """After 离开: the field, or the 末日之书 page (logged) for the caller's
+        loop to leave with its back arrow; a new-record screen is clicked away."""
+        if self._field_after_result(frame):
+            return True
+        if self._doom_page_visible(frame):
+            self.log_info(f"{LABEL}：按离开后回到末日之书页。")
+            return True
+        return False
+
     def _field_after_result(self, frame) -> bool:
         """The field is back; a new-record screen on the way is clicked away."""
         if self._field_visible(frame):
@@ -495,7 +505,11 @@ class DoomBookTask(_ClaimTaskBase):
             if leave is not None:
                 self.info_set("当前阶段", "离开结算")
                 self._click_reference_box(leave, after_sleep=2.0)
-                if self._wait_for(self._field_after_result, timeout=30.0):
+                # Stop waiting as soon as the 末日之书 page shows instead of
+                # the field; the next loop presses its back arrow.
+                if self._wait_for(self._field_or_doom_page, timeout=30.0) and self._field_visible(
+                    self.capture_frame()
+                ):
                     return True
                 continue
             reference = cv2.resize(frame[:, :, :3], (REFERENCE_WIDTH, REFERENCE_HEIGHT))
@@ -525,9 +539,13 @@ class DoomBookTask(_ClaimTaskBase):
             leave = self._box_with(buttons, (LEAVE_TEXT,))
             if leave is not None:
                 self._click_reference_box(leave, after_sleep=2.0)
-                if self._wait_for(self._field_after_result, timeout=30.0):
+                if self._wait_for(self._field_or_doom_page, timeout=30.0) and self._field_visible(
+                    self.capture_frame()
+                ):
                     self._field_to_home()
-                return
+                    return
+                # On the 末日之书 page: the two-read check below leaves it.
+                continue
             if self._dismiss_new_record(frame):
                 continue
             # On the 末日之书 page (two reads): 去战斗 never took, or the

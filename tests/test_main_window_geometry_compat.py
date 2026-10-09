@@ -127,7 +127,7 @@ class FirstOpenSizeTest(unittest.TestCase):
         from src.config import config
 
         size = config["window_size"]
-        self.assertEqual((1335, 997), (size["width"], size["height"]))
+        self.assertEqual((1335, 1020), (size["width"], size["height"]))
 
     def test_default_width_fits_eight_task_cards_per_row(self):
         from src.config import config
@@ -141,6 +141,11 @@ class FirstOpenSizeTest(unittest.TestCase):
         self.assertEqual((1335, 997), fit_first_open_size(1335, 997, 600, 450, 2048, 1112))
         self.assertEqual((1335, 997), fit_first_open_size(1335, 997, 600, 450, 2560, 1380))
         self.assertEqual((1335, 997), fit_first_open_size(1335, 997, 600, 450, 2194, 1206))
+
+    def test_big_screens_keep_the_size_with_the_week_row(self):
+        # 10-09: 1020 tall for the 本周任务 row; 2K at 125% (1023 usable) still fits.
+        for screen in ((2048, 1112), (2560, 1380), (2194, 1206)):
+            self.assertEqual((1335, 1020), fit_first_open_size(1335, 1020, 600, 450, *screen))
 
     def test_1080p_keeps_eight_cards_per_row(self):
         # 1080p at 100% leaves about 1920x1032: full width, a bit shorter.

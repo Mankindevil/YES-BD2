@@ -1,11 +1,12 @@
 import tempfile
 import time
 import unittest
+from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
 from src.config import config
-from src.tasks import run_report, scheduler
+from src.tasks import run_report, scheduler, weekly_ticks
 from src.tasks.DailyBatchTask import (
     RUN_MODE_ALL,
     RUN_MODE_INCOMPLETE,
@@ -18,6 +19,9 @@ from src.tasks.run_history import RunHistoryStore, set_default_store
 from src.tasks.task_notifications import log_task_completion
 
 _report_dir = None
+_TICKS = mock.patch.object(
+    weekly_ticks, "STATE_FILE", Path(tempfile.mkdtemp()) / "weekly_ticks.json"
+)
 
 
 def setUpModule():
@@ -25,10 +29,13 @@ def setUpModule():
     global _report_dir
     _report_dir = tempfile.TemporaryDirectory()
     run_report.set_report_file(f"{_report_dir.name}/run_reports.json")
+    # 周常 ticks too.
+    _TICKS.start()
 
 
 def tearDownModule():
     run_report.set_report_file(None)
+    _TICKS.stop()
     _report_dir.cleanup()
 
 
@@ -84,6 +91,11 @@ class DailyBatchTaskTest(unittest.TestCase):
             "自动PVP",
             "跑商",
             "活动每日战斗",
+            # Leo 2026-10-09: the 周常 run in 一键日常, skipped once done this week.
+            "浏览街机菜单",
+            "小屋增加人气",
+            "制作装备",
+            "末日之书",
             "领取任务奖励",
             "领取通行证",
             "领取邮件",
@@ -372,6 +384,124 @@ class DailyBatchTaskTest(unittest.TestCase):
         ):
             self.assertTrue(WeeklyBatchTask.run(task, RUN_MODE_ALL))
         self.assertEqual([("done", True), ("pending", True)], calls)
+
+    def _weekly_batch(self, calls, ticks):
+        class Daily:
+            pass
+
+        class WeekDone:
+            pass
+
+        class WeekPending:
+            pass
+
+        return self.make_task(
+            {
+                Daily: _ChildTask("daily", calls),
+                WeekDone: _ChildTask("week-done", calls),
+                WeekPending: _ChildTask("week-pending", calls),
+            },
+            (
+                DailyBatchChild("日常", Daily),
+                DailyBatchChild("做完的周常", WeekDone, weekly=True),
+                DailyBatchChild("没做的周常", WeekPending, weekly=True),
+            ),
+            {"启用": True, "日常": True, **ticks},
+        )[0]
+
+    def _run_with_week_done(self, task, done_at=None):
+        from src.tasks.run_history import week_start_ts
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            store = RunHistoryStore(f"{temp_dir}/history.json")
+            store.record_task_done(
+                SimpleNamespace(name="week-done", start_time=0, info={"状态": "完成。"}),
+                finished=done_at or week_start_ts() + 1,
+            )
+            set_default_store(store)
+            try:
+                with mock.patch("src.tasks.scheduler.default_store"):
+                    self.assertTrue(DailyBatchTask.run(task, RUN_MODE_ALL))
+            finally:
+                set_default_store(None)
+
+    def test_weekly_child_done_this_week_loses_its_tick(self):
+        # Leo 2026-10-09: 一键日常 runs the ticked 周常; one done this week has
+        # its tick taken away (so it is not run), and one that runs now too.
+        weekly_ticks.STATE_FILE.unlink(missing_ok=True)
+        calls = []
+        task = self._weekly_batch(calls, {"做完的周常": True, "没做的周常": True})
+        self._run_with_week_done(task)
+        self.assertEqual([("daily", True), ("week-pending", True)], calls)
+        self.assertIs(False, task.config["做完的周常"])
+        self.assertIs(False, task.config["没做的周常"])
+        self.assertIs(True, task.config["日常"])
+
+    def test_weekly_child_ticked_again_by_the_player_runs_again(self):
+        # Leo 2026-10-09: ticking it again (to test) runs it again this week.
+        weekly_ticks.STATE_FILE.unlink(missing_ok=True)
+        calls = []
+        task = self._weekly_batch(calls, {"做完的周常": True, "没做的周常": False})
+        self._run_with_week_done(task)
+        self.assertIs(False, task.config["做完的周常"])
+        task.config["做完的周常"] = True
+        calls.clear()
+        self._run_with_week_done(task)
+        self.assertEqual([("daily", True), ("week-done", True)], calls)
+        self.assertIs(False, task.config["做完的周常"])
+        self.assertIs(False, task.config["没做的周常"])  # the player's own untick stays
+
+    def test_shutdown_counts_weekly_child_done_earlier_this_week(self):
+        from src.tasks.run_history import week_start_ts
+
+        class Daily:
+            pass
+
+        class Week:
+            pass
+
+        task, _resets = self.make_task(
+            {Daily: _ChildTask("daily", []), Week: _ChildTask("week", [])},
+            (DailyBatchChild("日常", Daily), DailyBatchChild("周常", Week, weekly=True)),
+            {"启用": True, "完成日常后自动关机": True, "日常": True, "周常": True},
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            store = RunHistoryStore(f"{temp_dir}/history.json")
+            store.record_task_done(
+                SimpleNamespace(name="week", start_time=0, info={"状态": "完成。"}),
+                finished=week_start_ts() + 1,
+            )
+            set_default_store(store)
+            try:
+                with mock.patch(
+                    "src.tasks.DailyBatchTask._schedule_system_shutdown"
+                ) as shutdown:
+                    self.assertTrue(DailyBatchTask.run(task, RUN_MODE_ALL))
+            finally:
+                set_default_store(None)
+        shutdown.assert_called_once_with(SHUTDOWN_COUNTDOWN_SECONDS)
+
+    def test_weekly_switches_carry_over_from_the_old_weekly_batch(self):
+        import json
+        from pathlib import Path
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            folder = Path(temp_dir)
+            (folder / "WeeklyBatchTask.json").write_text(
+                json.dumps({"末日之书": False, "制作装备": True}), encoding="utf-8"
+            )
+            with (
+                mock.patch(
+                    "src.tasks.DailyBatchTask._config_file",
+                    side_effect=lambda name: folder / f"{name}.json",
+                ),
+                mock.patch("ok.util.config.Config.config_folder", temp_dir),
+            ):
+                task = DailyBatchTask(SimpleNamespace(scene=None), SimpleNamespace())
+                task.load_config()
+            self.assertFalse(task.config["末日之书"])
+            self.assertTrue(task.config["制作装备"])
+            self.assertFalse(task.config["打开工具时自动开始"])
 
     def test_child_lookup_matches_the_exact_class_not_a_subclass(self):
         class Refine:

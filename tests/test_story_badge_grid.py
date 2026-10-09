@@ -160,6 +160,65 @@ class StoryBadgeGridTest(unittest.TestCase):
                     self.assertIsNone(detection)
                     self.assertIn("原尺寸候选OCR未确认", reason)
 
+    def test_clone_1080_cards_are_found_by_their_art(self):
+        # Leo 2026-10-09: 16 lost its own slot to the look-alike 18 badge and
+        # the bar slid for two minutes; the art finds every card 8-17 in place
+        # at the client sizes players run.
+        base = _load_fixture("native_1080_clone_q8_q17_bar.png")
+        for width, height in ((1920, 1080), (3840, 2160), (2560, 1440), (1280, 720)):
+            frame = (
+                base
+                if width == 1920
+                else cv2.resize(
+                    base,
+                    (width, height),
+                    interpolation=cv2.INTER_AREA if width < 1920 else cv2.INTER_CUBIC,
+                )
+            )
+            factor = height / 1080
+            for number in range(8, 18):
+                with self.subTest(size=width, card=number):
+                    detection, reason = self._navigator()._find_story_card(frame, number)
+                    self.assertEqual("", reason)
+                    assert detection is not None
+                    self.assertEqual("card_art", detection.recovery_mode)
+                    self.assertEqual(number, detection.best.number)
+                    badge_x = 467.5 + (number - 10) * 180
+                    self.assertLess(abs(detection.best.result.center[0] / factor - badge_x), 6.0)
+                    self.assertLess(abs(detection.best.result.center[1] / factor - 936.5), 6.0)
+
+    def test_art_finds_pinned_cards_out_of_number_order(self):
+        # Pinned cards come first (6, 18, 20, then 1, 2, 3 ...), so the bar
+        # order alone cannot place a card.
+        frame = _load_fixture("native_720_q6_visible.png")
+        factor = 720 / 1080
+        for number, badge_x in ((18, 274), (1, 634), (5, 1354), (7, 1534)):
+            with self.subTest(card=number):
+                detection, _reason = self._navigator()._find_story_card_by_art(frame, number)
+                assert detection is not None
+                self.assertLess(abs(detection.best.result.center[0] / factor - badge_x), 8.0)
+
+    def test_art_does_not_place_cards_that_are_not_on_the_bar(self):
+        frame = _load_fixture("native_1080_clone_q8_q17_bar.png")
+        for number in (1, 2, 3, 4, 5, 6, 7, 18, 19):
+            with self.subTest(card=number):
+                detection, _reason = self._navigator()._find_story_card_by_art(frame, number)
+                self.assertIsNone(detection)
+
+    def test_art_digit_only_vetoes_a_clear_other_number(self):
+        frame = _load_fixture("native_1080_clone_q8_q17_bar.png")
+        cases = (("16", True), ("6", True), ("", True), ("18", False), ("10", False))
+        for reply, accepted in cases:
+            with self.subTest(ocr=reply):
+                navigator = self._navigator()
+                navigator.vision.ocr_text = lambda *_args, **_kwargs: reply
+                detection, reason = navigator._find_story_card_by_art(frame, 16)
+                if accepted:
+                    self.assertIsNotNone(detection)
+                else:
+                    self.assertIsNone(detection)
+                    self.assertIn("数字读成", reason)
+
     def test_slot_grid_does_not_invent_q6_in_later_720_viewport(self):
         frame = _load_fixture("native_720_q6_absent.png")
         detection, reason = self._navigator()._find_story_badge(frame, 6)

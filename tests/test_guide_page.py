@@ -42,7 +42,7 @@ class GuidePageTest(unittest.TestCase):
 
     def test_sidebar_lists_the_guide_above_settings(self):
         keys = [key for key, _label, _icon in Sidebar.BOTTOM]
-        self.assertEqual(["guide", "settings", "about"], keys)
+        self.assertEqual(["problem", "guide", "settings", "about"], keys)
 
     def test_every_picture_exists_and_loads(self):
         for name in PICTURES:
@@ -50,17 +50,18 @@ class GuidePageTest(unittest.TestCase):
                 self.assertTrue(Path(guide_page.picture_path(name)).exists())
                 self.assertTrue(GuidePicture(name, 300).has_picture())
 
-    def test_badge_shows_until_the_guide_is_opened_once(self):
+    def test_badge_always_says_must_read(self):
+        # Leo 2026-10-09: always marked 必看 (it used to go once opened).
         sidebar = SimpleNamespace(items={"guide": _Item()})
         navigated = []
         page = GuidePage(navigated.append, sidebar)
         self.assertEqual("必看", sidebar.items["guide"].badge)
         page.show()
         self.app.processEvents()
-        self.assertEqual("", sidebar.items["guide"].badge)
+        self.assertEqual("必看", sidebar.items["guide"].badge)
         self.assertTrue(guide_page.seen())
         GuidePage(navigated.append, sidebar)
-        self.assertEqual("", sidebar.items["guide"].badge)
+        self.assertEqual("必看", sidebar.items["guide"].badge)
         page.close()
 
     def test_settings_buttons_open_their_pages(self):

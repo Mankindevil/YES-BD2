@@ -44,6 +44,7 @@ from src.tasks.map_trade.navigator import (
     STORY_BADGE_ENCODED_TEMPLATE_SCORE,
     STORY_BADGE_ENCODED_ZNCC_SCORE,
     STORY_BADGE_MIN_MARGIN,
+    STORY_BADGE_NATIVE_RUNNER_MAX_GAP,
     STORY_BADGE_OCR_MIN_CONFIDENCE,
     STORY_BADGE_PIXEL_SCORE,
     STORY_BADGE_TEMPLATE_SCORE,
@@ -725,6 +726,102 @@ class StoryBadgeTest(unittest.TestCase):
 
                 self.assertIsNone(detection)
                 self.assertIn(expected, reason)
+
+    def _native_badge_16_behind_18(self, ocr_reply, ocr_calls, runner_zncc=0.868):
+        """Badge 16 losing its own slot to 18, as Leo's clone read it.
+
+        Scores are copied from the 2026-10-09 13:30:36 MapCollectionTask log:
+        the 18 template beat 16 by 0.010 ZNCC on every frame for two minutes.
+        """
+
+        matches = {
+            "story_cartridge_badge_18.png": (
+                MatchResult(
+                    0.978,
+                    (1024, 908),
+                    (29, 29),
+                    pixel_score=0.942,
+                    zncc_score=0.878,
+                    gradient_zncc_score=0.853,
+                    edge_score=0.970,
+                ),
+            ),
+            "story_cartridge_badge_16.png": (
+                MatchResult(
+                    0.977,
+                    (1024, 908),
+                    (29, 29),
+                    pixel_score=0.934,
+                    zncc_score=runner_zncc,
+                    gradient_zncc_score=0.808,
+                    edge_score=0.963,
+                ),
+            ),
+        }
+
+        def ocr_text(*_args, **_kwargs):
+            ocr_calls.append(1)
+            return ocr_reply
+
+        vision = SimpleNamespace(
+            match_all=lambda _frame, spec, **_kwargs: matches.get(
+                Path(spec.file_name).name,
+                (),
+            ),
+            ocr_text=ocr_text,
+        )
+        return Navigator(SimpleNamespace(), vision)
+
+    def test_story_badge_close_native_runner_up_is_settled_by_digit_ocr(self):
+        frame = np.zeros((1080, 1920, 3), dtype=np.uint8)
+
+        detection, reason = self._native_badge_16_behind_18("16", [])._find_story_badge(
+            frame,
+            16,
+        )
+
+        self.assertEqual("", reason)
+        self.assertIsNotNone(detection)
+        self.assertEqual(16, detection.best.number)
+        self.assertEqual(18, detection.runner_up.number)
+        self.assertEqual("native_runner", detection.recovery_mode)
+        self.assertEqual(16, detection.ocr_number)
+
+    def test_story_badge_native_runner_up_needs_the_target_digit(self):
+        frame = np.zeros((1080, 1920, 3), dtype=np.uint8)
+        for reply in ("18", ""):
+            with self.subTest(reply=reply):
+                detection, _reason = self._native_badge_16_behind_18(
+                    reply,
+                    [],
+                )._find_story_badge(frame, 16)
+
+                self.assertIsNone(detection)
+
+    def test_story_badge_far_native_runner_up_is_not_promoted(self):
+        frame = np.zeros((1080, 1920, 3), dtype=np.uint8)
+        calls: list[int] = []
+
+        detection, _reason = self._native_badge_16_behind_18(
+            "16",
+            calls,
+            runner_zncc=0.878 - STORY_BADGE_NATIVE_RUNNER_MAX_GAP - 0.001,
+        )._find_story_badge(frame, 16)
+
+        self.assertIsNone(detection)
+        self.assertEqual([], calls)
+
+    def test_story_badge_look_alike_winner_is_not_taken_as_itself(self):
+        # Searching 18 on the same slot: 18 leads 16 by only 0.010, far below
+        # the lead any tier needs, so it must not be accepted as 18.
+        frame = np.zeros((1080, 1920, 3), dtype=np.uint8)
+
+        detection, _reason = self._native_badge_16_behind_18("16", [])._find_story_badge(
+            frame,
+            18,
+        )
+
+        self.assertIsNone(detection)
 
     def test_story_badge_encoded_lead_below_ocr_floor_skips_ocr(self):
         frame = np.zeros((1080, 1920, 3), dtype=np.uint8)

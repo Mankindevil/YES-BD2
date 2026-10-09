@@ -11,7 +11,7 @@ from PySide6.QtWidgets import QApplication, QWidget
 
 from src.tasks import FiendHuntTask as fiend
 from src.tasks.fiend_hunt import costumes
-from src.ui.shell import data, fiend_page, guide_page
+from src.ui.shell import data, fiend_page, guide_page, hotkeys
 
 _SEEN = mock.patch.object(guide_page, "SEEN_FILE", Path(tempfile.mkdtemp()) / "ui_guide.json")
 
@@ -45,6 +45,7 @@ class FiendPageTest(unittest.TestCase):
             mock.patch.object(data, "last_run", lambda _name: None),
             mock.patch.object(data, "busy", lambda: False),
             mock.patch.object(data, "executor", lambda: None),
+            mock.patch.object(hotkeys, "KEYS_FILE", self.root / "hotkeys.json"),
         ):
             patch.start()
             self.addCleanup(patch.stop)
@@ -95,14 +96,14 @@ class FiendPageTest(unittest.TestCase):
         page.refresh()
         self.assertNotIn("服装顺序设置", page.card_note.text())
 
-    def test_the_record_key_is_picked_from_f6_to_f10(self):
-        # Leo 2026-10-06
+    def test_the_record_key_is_picked_from_f6_to_f12(self):
+        # Leo 2026-10-06; F11/F12 added 2026-10-09 (YES-BD2 issue #1)
         (self.root / "10月").mkdir()
         page = fiend_page.FiendPage()
         page.refresh()
         box = page.key_box
         self.assertEqual(
-            ["F6", "F7", "F8", "F9", "F10"], [box.itemText(i) for i in range(box.count())]
+            [f"F{n}" for n in range(6, 13)], [box.itemText(i) for i in range(box.count())]
         )
         self.assertEqual("F8", box.currentText())
         box.setCurrentText("F9")

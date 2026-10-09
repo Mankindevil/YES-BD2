@@ -9,6 +9,7 @@ from PySide6.QtWidgets import QApplication
 
 from src.compat.update_card_ui import (
     MIN_CHECK_UPDATES_LAUNCHER_VERSION,
+    NO_LAUNCHER_MESSAGE,
     PATCH_MARKER,
     UPDATE_CARD_STATUS_WRAP_WIDTH,
     install_update_card_ui,
@@ -21,9 +22,11 @@ UNSUPPORTED_MESSAGE = "Update checking is not supported by this PyAppify version
 DOWNLOAD_URL = "https://github.com/nobell001/YES-BD2/releases/latest"
 
 
-def make_pyappify_module(pyappify_version=None):
+def make_pyappify_module(pyappify_version=None, get_version_list=None):
     module = types.SimpleNamespace()
     module.pyappify_version = pyappify_version
+    if get_version_list is not None:
+        module.get_version_list = get_version_list
     return module
 
 
@@ -123,6 +126,18 @@ class UpdateCardUiCompatTest(unittest.TestCase):
         card.show()
         card.check_for_updates()
         self.assertEqual(UNSUPPORTED_MESSAGE, card.status_label.text())
+
+    def test_check_for_updates_without_launcher_explains_in_chinese(self):
+        calls = []
+        card = UpdateCard(
+            "v0.1.6",
+            make_pyappify_module(None, lambda **kwargs: calls.append(kwargs) or []),
+            download_url=DOWNLOAD_URL,
+        )
+        card.show()
+        card.check_for_updates()
+        self.assertEqual(NO_LAUNCHER_MESSAGE, card.status_label.text())
+        self.assertEqual([], calls)
 
     def test_check_for_updates_new_launcher_uses_upstream_path(self):
         card = self.make_card("1.2.3")
