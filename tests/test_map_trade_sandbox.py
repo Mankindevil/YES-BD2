@@ -39,6 +39,7 @@ from src.tasks.map_trade.navigator import (
     SANDBOX_SKILL_UNSELECTED_YELLOW_MAX_RATIO,
     SANDBOX_TEMPLATES,
     STORY_BADGE_ENCODED_MIN_MARGIN,
+    STORY_BADGE_ENCODED_OCR_MARGIN,
     STORY_BADGE_ENCODED_PIXEL_SCORE,
     STORY_BADGE_ENCODED_TEMPLATE_SCORE,
     STORY_BADGE_ENCODED_ZNCC_SCORE,
@@ -584,7 +585,7 @@ class StoryBadgeTest(unittest.TestCase):
                 {
                     "runner_zncc": (
                         STORY_BADGE_ENCODED_ZNCC_SCORE
-                        - STORY_BADGE_ENCODED_MIN_MARGIN
+                        - STORY_BADGE_ENCODED_OCR_MARGIN
                         + 0.001
                     )
                 },
@@ -626,8 +627,14 @@ class StoryBadgeTest(unittest.TestCase):
                         Path(spec.file_name).name,
                         (),
                     ),
-                    ocr_text=lambda *_args, **_kwargs: self.fail(
-                        "rejected encoded candidates must not reach OCR"
+                    # Below the encoded floors the badge still clears the
+                    # grid floors, so only a digit read of 6 could accept it.
+                    ocr_text=(
+                        (lambda *_args, **_kwargs: self.fail(
+                            "a lead below the OCR floor must not reach OCR"
+                        ))
+                        if failed_gate == "margin"
+                        else (lambda *_args, **_kwargs: "")
                     ),
                 )
 
@@ -638,9 +645,128 @@ class StoryBadgeTest(unittest.TestCase):
 
                 self.assertIsNone(detection)
                 self.assertIn(
-                    "候选分差不足" if failed_gate == "margin" else "编码恢复门槛",
+                    "候选分差不足" if failed_gate == "margin" else "原尺寸候选OCR未确认",
                     reason,
                 )
+
+    def _encoded_badge_10_vs_19(self, ocr_reply, ocr_calls):
+        """Badge 10 and its look-alike 19 as Leo's 1920x1080 clone read them.
+
+        Scores are copied from the 2026-10-09 11:14:31 MapCollectionTask log:
+        every frame put 10 one hair short of the strict pixel gate and only
+        0.030 ZNCC ahead of 19 at the same slot.
+        """
+
+        matches = {
+            "story_cartridge_badge_10.png": (
+                MatchResult(
+                    0.981,
+                    (1685, 908),
+                    (29, 29),
+                    pixel_score=0.941,
+                    zncc_score=0.896,
+                    gradient_zncc_score=0.861,
+                    edge_score=0.957,
+                ),
+            ),
+            "story_cartridge_badge_19.png": (
+                MatchResult(
+                    0.976,
+                    (1685, 908),
+                    (29, 29),
+                    pixel_score=0.956,
+                    zncc_score=0.866,
+                    gradient_zncc_score=0.862,
+                    edge_score=0.950,
+                ),
+            ),
+        }
+
+        def ocr_text(*_args, **_kwargs):
+            ocr_calls.append(1)
+            return ocr_reply
+
+        vision = SimpleNamespace(
+            match_all=lambda _frame, spec, **_kwargs: matches.get(
+                Path(spec.file_name).name,
+                (),
+            ),
+            ocr_text=ocr_text,
+        )
+        return Navigator(SimpleNamespace(), vision)
+
+    def test_story_badge_encoded_close_lead_is_settled_by_digit_ocr(self):
+        frame = np.zeros((1080, 1920, 3), dtype=np.uint8)
+        calls: list[int] = []
+
+        detection, reason = self._encoded_badge_10_vs_19("10", calls)._find_story_badge(
+            frame,
+            10,
+        )
+
+        self.assertEqual(reason, "")
+        self.assertIsNotNone(detection)
+        self.assertEqual(detection.best.number, 10)
+        self.assertEqual(detection.runner_up.number, 19)
+        self.assertEqual(detection.ocr_number, 10)
+        self.assertAlmostEqual(detection.margin, 0.030, places=3)
+        self.assertTrue(calls)
+
+    def test_story_badge_encoded_close_lead_rejects_wrong_or_missing_digit(self):
+        frame = np.zeros((1080, 1920, 3), dtype=np.uint8)
+        for reply, expected in (("19", "角标OCR数字冲突"), ("", "候选分差不足")):
+            with self.subTest(reply=reply):
+                detection, reason = Navigator._find_story_badge_from_detections(
+                    self._encoded_badge_10_vs_19(reply, []),
+                    frame,
+                    10,
+                    self._encoded_badge_10_vs_19(reply, [])._story_badge_detections(frame),
+                )
+
+                self.assertIsNone(detection)
+                self.assertIn(expected, reason)
+
+    def test_story_badge_encoded_lead_below_ocr_floor_skips_ocr(self):
+        frame = np.zeros((1080, 1920, 3), dtype=np.uint8)
+        matches = {
+            "story_cartridge_badge_10.png": (
+                MatchResult(
+                    0.981,
+                    (1685, 908),
+                    (29, 29),
+                    pixel_score=0.941,
+                    zncc_score=0.896,
+                ),
+            ),
+            "story_cartridge_badge_19.png": (
+                MatchResult(
+                    0.976,
+                    (1685, 908),
+                    (29, 29),
+                    pixel_score=0.936,
+                    zncc_score=0.896 - STORY_BADGE_ENCODED_OCR_MARGIN + 0.001,
+                ),
+            ),
+        }
+        vision = SimpleNamespace(
+            match_all=lambda _frame, spec, **_kwargs: matches.get(
+                Path(spec.file_name).name,
+                (),
+            ),
+            ocr_text=lambda *_args, **_kwargs: self.fail(
+                "a lead below the OCR floor must not reach OCR"
+            ),
+        )
+        navigator = Navigator(SimpleNamespace(), vision)
+
+        detection, reason = navigator._find_story_badge_from_detections(
+            frame,
+            10,
+            navigator._story_badge_detections(frame),
+        )
+
+        self.assertIsNone(detection)
+        self.assertIn("候选分差不足", reason)
 
     def test_story_badge_detection_rejects_conflicting_ocr_number(self):
         frame = np.zeros((1080, 1920, 3), dtype=np.uint8)

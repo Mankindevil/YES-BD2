@@ -82,7 +82,8 @@ class StoryBadgeGridTest(unittest.TestCase):
         recovered, reason = navigator._find_story_badge(frame, 6)
 
         self.assertIsNone(strict)
-        self.assertIn("未达到角标严格或编码恢复门槛", strict_reason)
+        # The fixture task has no OCR, so the native OCR tier cannot accept.
+        self.assertRegex(strict_reason, "未达到角标严格或编码恢复门槛|原尺寸候选OCR未确认")
         self.assertEqual("", reason)
         self.assertIsNotNone(recovered)
         assert recovered is not None
@@ -106,6 +107,58 @@ class StoryBadgeGridTest(unittest.TestCase):
         self.assertEqual((784, 738), recovered.best.result.position)
         self.assertEqual((22, 22), recovered.best.result.size)
         self.assertGreaterEqual(recovered.margin, STORY_BADGE_GRID_MIN_MARGIN)
+
+    def test_clone_1080_grid_follows_the_strong_badges_not_a_weak_row(self):
+        # Leo's 桌面分身 screenshot 2026-10-09: a weak "4" peak beside every
+        # card lined up 76 px left of the badges and used to win the lattice.
+        frame = _load_fixture("native_1080_clone_q8_q17_bar.png")
+        navigator = self._navigator()
+        base = navigator._story_badge_detections(frame)
+        grid = navigator._story_badge_grid(frame, base)
+
+        self.assertIsNotNone(grid)
+        assert grid is not None
+        badge_10_center_x = 453 + 14.5
+        offset = (badge_10_center_x - grid.phase) % grid.spacing
+        self.assertLess(min(offset, grid.spacing - offset), 6.0)
+
+        recovered, reason = navigator._find_story_badge(frame, 14)
+        self.assertEqual("", reason)
+        self.assertIsNotNone(recovered)
+        assert recovered is not None
+        self.assertEqual("slot_grid", recovered.recovery_mode)
+        self.assertEqual(14, recovered.best.number)
+        self.assertLess(abs(recovered.best.result.center[0] - (1173 + 14.5)), 6.0)
+
+        missing, _reason = navigator._find_story_badge(frame, 7)
+        self.assertIsNone(missing)
+
+    def test_clone_1080_badge_14_is_accepted_natively_when_ocr_reads_14(self):
+        # Same screenshot: badge 14 sits just under the strict and encoded
+        # floors (m=0.979, p=0.933, z=0.882) but 0.2 ZNCC ahead of 16.
+        frame = _load_fixture("native_1080_clone_q8_q17_bar.png")
+        for reply, accepted in (("14", True), ("16", False), ("", False)):
+            with self.subTest(ocr=reply):
+                navigator = self._navigator()
+                navigator.vision.ocr_text = lambda *_args, **_kwargs: reply
+                base = navigator._story_badge_detections(frame)
+
+                detection, reason = navigator._find_story_badge_from_detections(
+                    frame,
+                    14,
+                    base,
+                )
+
+                if accepted:
+                    self.assertEqual("", reason)
+                    self.assertIsNotNone(detection)
+                    assert detection is not None
+                    self.assertEqual("", detection.recovery_mode)
+                    self.assertEqual(14, detection.ocr_number)
+                    self.assertLess(abs(detection.best.result.center[0] - (1173 + 14.5)), 6.0)
+                else:
+                    self.assertIsNone(detection)
+                    self.assertIn("原尺寸候选OCR未确认", reason)
 
     def test_slot_grid_does_not_invent_q6_in_later_720_viewport(self):
         frame = _load_fixture("native_720_q6_absent.png")
