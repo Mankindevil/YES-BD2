@@ -283,7 +283,8 @@ if ($viteConfig -notmatch 'base:\s*["'']\./["'']') {
 }
 
 # The launcher's footer linked to PyAppify's own repository; players read it
-# as the tool's page, so it points to YES-BD2 instead (Leo 10-08).
+# as the tool's page (Leo 10-08), and Leo 10-09 asked to drop it altogether.
+# appVersion stays referenced: the launcher is type-checked with noUnusedLocals.
 $appTsxPath = Join-Path $buildPath "src\App.tsx"
 $appTsx = Get-Content -LiteralPath $appTsxPath -Raw
 $footerLink = '<Link href="https://github.com/ok-oldking/pyappify" target="_blank" rel="noopener noreferrer">{t(''appMadeWith'', {name: `PyAppify ${appVersion}`})}</Link>'
@@ -292,7 +293,7 @@ if (-not $appTsx.Contains($footerLink)) {
 }
 $appTsx = $appTsx.Replace(
     $footerLink,
-    '<Link href="https://github.com/nobell001/YES-BD2" target="_blank" rel="noopener noreferrer">{`YES-BD2 on GitHub - PyAppify ${appVersion}`}</Link>'
+    '{appVersion && null}'
 )
 Set-Content -LiteralPath $appTsxPath -Value $appTsx -Encoding UTF8
 
