@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from src.compat.launcher_env import find_install, restore_launcher_env
+from src.compat.launcher_env import find_install, restore_launcher_env, show_update_notice_once
 
 
 class LauncherEnvTest(unittest.TestCase):
@@ -66,3 +66,29 @@ class LauncherEnvTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class UpdateNoticeOnceTest(unittest.TestCase):
+    def env(self, starting="v0.1.11", current="v0.1.13"):
+        return {"PYAPPIFY_APP_STARTING_VERSION": starting, "PYAPPIFY_APP_VERSION": current}
+
+    def test_shows_once_then_never_again_for_that_version(self):
+        with tempfile.TemporaryDirectory() as folder:
+            first = self.env()
+            self.assertTrue(show_update_notice_once(folder, first))
+            self.assertEqual("v0.1.11", first["PYAPPIFY_APP_STARTING_VERSION"])
+            again = self.env()
+            self.assertFalse(show_update_notice_once(folder, again))
+            # 起始版本跟现在一样：ok 的 get_startup_version_change 回 None
+            self.assertEqual("v0.1.13", again["PYAPPIFY_APP_STARTING_VERSION"])
+
+    def test_next_update_shows_again(self):
+        with tempfile.TemporaryDirectory() as folder:
+            show_update_notice_once(folder, self.env())
+            self.assertTrue(show_update_notice_once(folder, self.env(current="v0.1.14")))
+
+    def test_nothing_to_do_without_an_update(self):
+        with tempfile.TemporaryDirectory() as folder:
+            self.assertFalse(show_update_notice_once(folder, self.env("v0.1.13", "v0.1.13")))
+            self.assertFalse(show_update_notice_once(folder, {}))
+            self.assertFalse((Path(folder) / "configs").exists())

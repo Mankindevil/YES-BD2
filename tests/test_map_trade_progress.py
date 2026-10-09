@@ -214,8 +214,8 @@ class ProgressTest(unittest.TestCase):
     def test_collection_skill_limits_match_three_two_two_per_card(self):
         self.assertEqual(21, DAILY_ABSORB_LIMIT)
         self.assertEqual(21, DAILY_SUMMON_LIMIT)
-        # The game shows x/70 on the 压制 icon (live 2026-09-28).
-        self.assertEqual(70, DAILY_SUPPRESS_LIMIT)
+        # The usual 压制 limit (Leo 2026-10-09: x/80); the HUD's own wins.
+        self.assertEqual(80, DAILY_SUPPRESS_LIMIT)
 
     def test_progress_rejects_pinned_collection_cards(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -552,6 +552,43 @@ class ProgressTest(unittest.TestCase):
             self.assertEqual(0, store.reconcile_pending("吸收", (0, 21)))
             self.assertEqual(0, store.reconcile_pending("吸收", (1, 21)))
             self.assertEqual(CollectionActionState.SETTLED.value, record["state"])
+
+    def test_daily_limit_follows_the_hud(self):
+        # Leo 2026-10-09: limits differ per player (a 召集 at 19, his 压制
+        # at 80) and grow with game updates; the HUD decides.
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "progress.json"
+            store = ProgressStore(path, lambda: datetime(2026, 8, 10, 12, tzinfo=UTC_PLUS_8))
+            store.load()
+            self.assertEqual(21, store.limit_of("召集"))
+            store.reconcile_pending("召集", (3, 19))
+            self.assertEqual(21, store.limit_of("召集"))  # one read is not enough
+            store.reconcile_pending("召集", (3, 19))
+            self.assertEqual(19, store.limit_of("召集"))
+            store.reconcile_pending("召集", (19, 19))
+            self.assertTrue(store.state.depleted_today)
+            store.reconcile_pending("压制", (5, 90))
+            store.reconcile_pending("压制", (5, 90))
+            self.assertEqual(90, store.limit_of("压制"))
+            # Kept for the day, and gone on the next one.
+            again = ProgressStore(path, lambda: datetime(2026, 8, 10, 13, tzinfo=UTC_PLUS_8))
+            again.load()
+            self.assertEqual(19, again.limit_of("召集"))
+            tomorrow = ProgressStore(path, lambda: datetime(2026, 8, 11, 13, tzinfo=UTC_PLUS_8))
+            tomorrow.load()
+            self.assertEqual(21, tomorrow.limit_of("召集"))
+
+    def test_absorb_limit_from_the_hud_plans_the_day(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            store = ProgressStore(
+                Path(temp_dir) / "progress.json",
+                lambda: datetime(2026, 8, 10, 12, tzinfo=UTC_PLUS_8),
+            )
+            store.load()
+            store.reconcile_pending("吸收", (20, 24))
+            store.reconcile_pending("吸收", (20, 24))
+            self.assertTrue(store.can_plan_collection(["a", "b", "c"]))
+            self.assertFalse(store.can_plan_collection(["a", "b", "c", "d", "e"]))
 
     def test_target_commit_covers_reservation_without_double_counting(self):
         with tempfile.TemporaryDirectory() as temp_dir:

@@ -2,6 +2,7 @@ import unittest
 
 import numpy as np
 
+from src.utils import game_language
 from src.utils.home_confirmation import (
     HOME_ANNOUNCEMENT_CLEAR_REFERENCE_POINT,
     HOME_ANNOUNCEMENT_CLEAR_RELATIVE_POINT,
@@ -35,6 +36,12 @@ def _passing_kwargs(**overrides):
 
 
 class HomeConfirmationTest(unittest.TestCase):
+    def setUp(self):
+        # The home checks remember 繁中 text they read; don't leak that into
+        # later tests' failed runs.
+        game_language.reset()
+        self.addCleanup(game_language.reset)
+
     def test_shared_roi_matches_1920_by_1080_reference(self):
         self.assertEqual((110, 993, 95, 54), HOME_GACHA_OCR_REFERENCE_ROI)
         self.assertEqual(

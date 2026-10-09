@@ -1354,6 +1354,24 @@ class CollectorSkillTest(unittest.TestCase):
         self.assertFalse(result.completed)
         self.assertEqual(3, len(clicks))
 
+    def test_summon_with_unsteady_count_is_still_pressed_again(self):
+        # YES-BD2 #3 (2026-10-09): 召集 dropped on a slow PC, count 3/19 ->
+        # 3/19 and the icon still bright; it greys once it takes, so it is
+        # pressed again and the run goes on.
+        collector, clicks, _statuses, _progress, taken = self._missed_press_collector(
+            1, steady=False
+        )
+
+        result = collector._use_actions(
+            BATTLE_ACTIONS,
+            card_id="Q_sp1",
+            map_role=CollectionMapRole.BATTLE_AREA_1,
+        )
+
+        self.assertTrue(result.completed, result.message)
+        self.assertEqual(4, len(clicks))
+        self.assertEqual({"吸收": 1, "召集": 1, "压制": 1}, taken)
+
     def test_press_with_unsteady_count_is_not_pressed_again(self):
         collector, clicks, _statuses, _progress, _taken = self._missed_press_collector(
             1, skill="压制", steady=False

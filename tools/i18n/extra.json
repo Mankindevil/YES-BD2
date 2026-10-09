@@ -878,5 +878,15 @@
   "en": "The Clone Desktop program couldn't start; an antivirus may be blocking it. Mark {folder} as trusted, then press \"First-time setup\" in Settings.",
   "ja": "分身デスクトップのプログラムを起動できません。ウイルス対策ソフトにブロックされている可能性があります。{folder} を信頼済みにしてから、「設定」で「初回設定」を押してください",
   "ko": "분신 데스크톱 프로그램을 열 수 없습니다. 백신 프로그램이 막고 있을 수 있습니다. {folder}을(를) 신뢰하도록 설정한 뒤 ‘설정’에서 ‘처음 설정’을 누르세요"
+ },
+ "启动器更新中": {
+  "en": "Updating the launcher",
+  "ja": "ランチャーを更新中",
+  "ko": "런처 업데이트 중"
+ },
+ "在后台进行，关掉工具也会完成，下次打开生效": {
+  "en": "Runs in the background and finishes even if you close the tool. Takes effect next time you open it.",
+  "ja": "バックグラウンドで行い、ツールを閉じても完了します。次に開いたときに反映されます",
+  "ko": "백그라운드에서 진행되며 도구를 닫아도 완료됩니다. 다음에 열 때 적용됩니다"
  }
 }

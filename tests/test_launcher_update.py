@@ -97,7 +97,8 @@ class LauncherUpdateConfigTest(unittest.TestCase):
 
     def test_no_launcher_upgrade_from_the_upstream_release(self):
         # The upstream launcher zip would point installs back at ok-bd2's
-        # update repository, so this fork ships no launcher self-upgrade.
+        # update repository; ok's own upgrade is also cancelled when the tool
+        # closes.  Our launcher swap lives in src/compat/launcher_swap.py.
         self.assertNotIn("update_pyappify", config)
 
     def test_config_exposes_download_link_for_update_errors(self):
