@@ -327,9 +327,12 @@ class CollectionRunTest(unittest.TestCase):
             result = Collector(task, object(), navigator, progress).run()
 
         self.assertTrue(result.success)
-        self.assertTrue(result.depleted)
+        self.assertFalse(result.depleted)
+        self.assertTrue(result.deferred)
+        self.assertIn("吸收还剩2次", result.message)
+        self.assertIn("需要3次", result.message)
         self.assertEqual(0, result.completed_submaps)
-        self.assertTrue(progress.state.depleted_today)
+        self.assertFalse(progress.state.depleted_today)
 
     def test_formal_collection_skips_unsupported_chapter_without_progress(self):
         # No chapter is unsupported since chapter 14 got its route; the skip
@@ -1315,14 +1318,13 @@ class CollectorSkillTest(unittest.TestCase):
         )
 
         self.assertTrue(result.completed, result.message)
-        # 吸收, 召集 (missed), 压制, then 召集 once more; nothing twice.
+        # 吸收, 召集 (missed), 召集 retry, then 压制; nothing successful twice.
         self.assertEqual(4, len(clicks))
         self.assertEqual({"吸收": 1, "召集": 1, "压制": 1}, taken)
-        self.assertIn(PRESS_AGAIN_PAUSE_SECONDS, sleeps)
+        self.assertIn(max(PRESS_AGAIN_PAUSE_SECONDS, PIPELINE_CLICK_INTERVAL), sleeps)
         self.assertTrue(any("补按" in str(value) for _key, value in statuses))
 
-    def test_summon_is_pressed_again_once_and_then_left_alone(self):
-        # Leo 2026-10-09: 「补按后 你就不要管了」.
+    def test_failed_summon_retry_stops_before_suppress_and_is_not_marked_done(self):
         collector, clicks, _statuses, progress, taken = self._missed_press_collector(99)
 
         result = collector._use_actions(
@@ -1331,11 +1333,12 @@ class CollectorSkillTest(unittest.TestCase):
             map_role=CollectionMapRole.BATTLE_AREA_1,
         )
 
-        self.assertTrue(result.completed, result.message)
-        self.assertEqual(4, len(clicks))
-        self.assertEqual({"吸收": 1, "召集": 0, "压制": 1}, taken)
+        self.assertFalse(result.completed)
+        self.assertEqual(2, len(clicks))
+        self.assertEqual({"吸收": 0, "召集": 0, "压制": 0}, taken)
         record = progress.get_action_record("Q_sp1", CollectionMapRole.BATTLE_AREA_1, "召集")
-        self.assertEqual(CollectionActionState.SETTLED.value, record["state"])
+        self.assertFalse(record["local_done"])
+        self.assertNotEqual(CollectionActionState.SETTLED.value, record["state"])
 
     def test_press_with_success_toast_is_not_pressed_again(self):
         # Leo 2026-10-09: a press that took must never be pressed again.
@@ -1417,12 +1420,63 @@ class CollectorSkillTest(unittest.TestCase):
             map_role=CollectionMapRole.BATTLE_AREA_1,
         )
 
-        self.assertEqual(0.8, PIPELINE_CLICK_INTERVAL)
+        self.assertEqual(2.0, PIPELINE_CLICK_INTERVAL)
         presses = [index for index, event in enumerate(events) if event == "click"]
         self.assertEqual(3, len(presses))
         for previous, current in zip(presses, presses[1:]):
             waits = [value for value in events[previous + 1:current] if value != "click"]
-            self.assertGreater(sum(waits), 0.7)
+            self.assertGreaterEqual(sum(waits), 2.0)
+
+    def test_each_skill_is_prepared_only_after_previous_result_is_verified(self):
+        collector, _clicks, _statuses, _progress, _taken = self._missed_press_collector(0)
+        events = []
+        clock = [0.0]
+        collector.task.config["采集技能等待秒数"] = 3.0
+        collector.task.sleep = lambda seconds: clock.__setitem__(0, clock[0] + seconds)
+        prepare = collector._prepare_action
+        finish = collector._finish_after_click
+        feedback = collector._read_action_feedback
+
+        def record_prepare(action, **kwargs):
+            events.append(("prepare", action.name, clock[0]))
+            return prepare(action, **kwargs)
+
+        def record_feedback(action):
+            events.append(("feedback", action.name, clock[0]))
+            return feedback(action)
+
+        def record_finish(action, **kwargs):
+            events.append(("verified", action.name, clock[0]))
+            return finish(action, **kwargs)
+
+        collector._prepare_action = record_prepare
+        collector._read_action_feedback = record_feedback
+        collector._finish_after_click = record_finish
+        result = collector._use_actions(
+            BATTLE_ACTIONS, card_id="Q_sp1", map_role=CollectionMapRole.BATTLE_AREA_1,
+        )
+        self.assertTrue(result.completed, result.message)
+        self.assertEqual(
+            [("prepare", "吸收")] + [(phase, action.name) for action in BATTLE_ACTIONS
+             for phase in ("prepare", "feedback", "verified")],
+            [(phase, name) for phase, name, _when in events],
+        )
+        self.assertEqual(["召集", "吸收", "压制"],
+                         [name for phase, name, _when in events if phase == "feedback"])
+        for index in range(1, len(events), 3):
+            self.assertGreaterEqual(events[index + 2][2] - events[index + 1][2], 3.0)
+
+    def test_absorb_preflight_does_not_arm_or_click_before_summon(self):
+        collector, clicks, _statuses, progress, _taken = self._missed_press_collector(0)
+        early, prepared = collector._prepare_action(
+            ABSORB_ACTION, card_id="Q_sp1", map_role=CollectionMapRole.BATTLE_AREA_1,
+            check_only=True,
+        )
+        self.assertIsNone(early)
+        self.assertIsNone(prepared)
+        self.assertEqual([], clicks)
+        self.assertIsNone(progress.get_action_record(
+            "Q_sp1", CollectionMapRole.BATTLE_AREA_1, "吸收"))
 
     def test_suppression_count_roi_uses_manual_fixed_region(self):
         frame = np.zeros((1080, 1920, 3), dtype=np.uint8)
@@ -2769,7 +2823,7 @@ class CollectionRouteTest(unittest.TestCase):
     """User 2026-09-28: on the last map go backwards, otherwise start from
     the town; a failed move restarts via the hunting ground."""
 
-    def _run(self, here, *, fail_first_advance=False, card_id="Q_sp6"):
+    def _run(self, here, *, fail_first_advance=False, fail_edge=None, card_id="Q_sp6"):
         card = CARD_BY_ID[card_id]
         events = []
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -2783,11 +2837,11 @@ class CollectionRouteTest(unittest.TestCase):
                 log_warning=lambda *_a: None,
                 info_set=lambda *_a: None,
             )
-            failed = [fail_first_advance]
+            failed = [fail_first_advance or fail_edge is not None]
 
             def advance(card_id, current, target):
                 events.append(("go", current.key, target.key))
-                if failed[0]:
+                if failed[0] and (fail_edge is None or (current.key, target.key) == fail_edge):
                     failed[0] = False
                     return NavigationResult(False, ScreenState.SANDBOX, "走不过去")
                 return NavigationResult(True, ScreenState.SANDBOX)
@@ -2850,17 +2904,15 @@ class CollectionRouteTest(unittest.TestCase):
             self._run("battle_area_2", card_id="Q_cp3"),
         )
 
-    def test_in_the_middle_the_town_comes_first(self):
-        # Leo 2026-09-29: anywhere but the town or the last map -> hunting
-        # ground -> the town, then the forward route.
+    def test_in_the_middle_collects_here_before_navigating(self):
         self.assertEqual(
             [
-                ("hunting",),
-                ("collect", "main_area"),
-                ("go", "main_area", "battle_area_1"),
                 ("collect", "battle_area_1"),
                 ("go", "battle_area_1", "battle_area_2"),
                 ("collect", "battle_area_2"),
+                ("go", "battle_area_2", "battle_area_1"),
+                ("go", "battle_area_1", "main_area"),
+                ("collect", "main_area"),
             ],
             self._run("battle_area_1"),
         )
@@ -2874,3 +2926,31 @@ class CollectionRouteTest(unittest.TestCase):
             ["main_area", "battle_area_1", "battle_area_2"],
             [event[1] for event in events if event[0] == "collect"],
         )
+
+    def test_failed_fifth_floor_walk_revisits_completed_sixth_floor_without_collecting(self):
+        events = self._run("main_area", fail_edge=("battle_area_1", "battle_area_2"))
+        restarted = events.index(("hunting",))
+        self.assertEqual(events[restarted + 1:], [
+            ("go", "main_area", "battle_area_1"),
+            ("go", "battle_area_1", "battle_area_2"),
+            ("collect", "battle_area_2"),
+        ])
+        self.assertEqual(events.count(("collect", "battle_area_1")), 1)
+
+    def test_fifth_floor_to_town_uses_sixth_floor_and_stops_if_transit_fails(self):
+        card = CARD_BY_ID["Q_sp6"]
+        for success in (False, True):
+            calls = []
+            collector = object.__new__(Collector)
+            collector._status = lambda *_: None
+
+            def advance(_card, current, target):
+                calls.append((current.key, target.key))
+                return NavigationResult(success, ScreenState.SANDBOX)
+
+            collector.navigator = SimpleNamespace(advance_collection_map=advance)
+            result = collector._go_to_collection_target(card, card.targets[2], card.targets[0])
+            self.assertEqual(result.success, success)
+            self.assertEqual(calls, [
+                ("battle_area_2", "battle_area_1"),
+            ] + ([("battle_area_1", "main_area")] if success else []))

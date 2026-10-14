@@ -650,21 +650,28 @@ class SellFlowMixin:
         located = self._wait_sale_item_candidates(entry)
         if located is not None or self._last_sale_name_seen or not self._last_sale_ocr_output:
             return located
+        still_hits = 0
         for page in range(1, SALE_LIST_MAX_SCROLLS + 1):
             before = self._sale_list_view()
             if not self._move_sale_list(-1):
                 break
             moved = float(np.mean(np.abs(self._sale_list_view() - before)))
             self._status("出售列表滚动", f"{entry.item}：第{page}次，变化={moved:.1f}")
-            if moved < SALE_LIST_END_DIFF:
-                break
+            still_hits = still_hits + 1 if moved < SALE_LIST_END_DIFF else 0
             # After a drag the list has settled: one read without the name is
             # enough to move on (two cost ~6.5 s a page, live 2K 2026-10-01).
+            # Also read unchanged frames: one swallowed drag is not evidence
+            # of the bottom (2026-10-12: steel skipped after a single 0.0).
             located = self._wait_sale_item_candidates(
                 entry, timeout=SALE_LIST_SCROLL_WAIT_TIMEOUT, empty_hits=1
             )
             if located is not None or self._last_sale_name_seen:
                 return located
+            if still_hits >= 2:
+                self._status("出售列表滚动", f"{entry.item}：连续两次无变化，复查后仍未定位，结束查找")
+                break
+            if still_hits:
+                self._status("出售列表滚动", f"{entry.item}：本次无变化，复查未找到，补试一次拖动")
         return None
 
     def _wait_sale_item_candidates(

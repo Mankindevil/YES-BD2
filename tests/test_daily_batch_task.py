@@ -55,6 +55,12 @@ class _ChildTask:
 
 
 class DailyBatchTaskTest(unittest.TestCase):
+    def setUp(self):
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        set_default_store(RunHistoryStore(f"{folder.name}/history.json"))
+        self.addCleanup(set_default_store, None)
+
     def make_task(self, children, child_specs, task_config):
         task = object.__new__(DailyBatchTask)
         task.child_tasks = child_specs
@@ -325,6 +331,46 @@ class DailyBatchTaskTest(unittest.TestCase):
             finally:
                 set_default_store(None)
         self.assertEqual([("gacha", True), ("later", True)], calls)
+
+    def test_completed_child_is_on_disk_before_next_child_and_without_stop_handler(self):
+        from ok.task.exceptions import TaskDisabledException
+
+        from src.tasks.run_history import default_store
+
+        class First:
+            pass
+
+        class Later:
+            pass
+
+        calls = []
+        store = default_store()
+        later = _ChildTask("later", calls)
+
+        def interrupted():
+            self.assertTrue(RunHistoryStore(store.path).is_completed_today("first"))
+            raise TaskDisabledException()
+
+        later.run = interrupted
+        task, _ = self.make_task(
+            {First: _ChildTask("first", calls), Later: later},
+            (DailyBatchChild("first", First), DailyBatchChild("later", Later)),
+            {"启用": True},
+        )
+        task._record_stopped_progress = lambda: None
+        schedule = mock.Mock()
+        schedule.is_due.return_value = True
+        with mock.patch("src.tasks.scheduler.default_store", return_value=schedule):
+            with self.assertRaises(TaskDisabledException):
+                task.run(RUN_MODE_ALL)
+            set_default_store(RunHistoryStore(store.path))  # restart
+            later.run = lambda: _ChildTask.run(later)
+            calls.clear()
+            self.assertTrue(task.run(RUN_MODE_INCOMPLETE))
+            self.assertEqual([("later", True)], calls)
+            calls.clear()
+            self.assertTrue(task.run(RUN_MODE_ALL))
+            self.assertEqual([("first", True), ("later", True)], calls)
 
     def test_weekly_batch_skips_children_done_this_week(self):
         from src.tasks.DailyBatchTask import WeeklyBatchTask
@@ -707,10 +753,7 @@ class DailyBatchTaskTest(unittest.TestCase):
 
         self.assertEqual([("快速狩猎", True)], calls)
 
-    def test_requested_run_mode_expires_and_defaults_to_all(self):
-        # MEDIUM 回归：「执行剩余」请求的 run_mode 带有效期。启动失败时
-        # run() 不执行、请求无法消费，过期作废，避免残留的 INCOMPLETE 被
-        # 之后的用户手动点击静默继承。
+    def test_requested_incomplete_mode_survives_slow_start_and_is_consumed_once(self):
         class First:
             pass
 
@@ -725,8 +768,8 @@ class DailyBatchTaskTest(unittest.TestCase):
 
         task.request_run_mode(RUN_MODE_INCOMPLETE)
         task._requested_run_mode_deadline = time.monotonic() - 1.0
-        self.assertEqual(RUN_MODE_ALL, task._take_run_mode(None))
-        # 作废后不留残留。
+        self.assertEqual(RUN_MODE_INCOMPLETE, task._take_run_mode(None))
+        # Consumed requests cannot leak into the next run.
         self.assertEqual(RUN_MODE_ALL, task._take_run_mode(None))
 
     def test_run_defers_while_auto_login_pending(self):

@@ -175,6 +175,11 @@ class AutoLoginSequenceTest(unittest.TestCase):
         task._match = fake_match
 
         AutoLoginTask.run(task)
+        self.assertEqual("clearing", task._state)
+        self.assertFalse(task._finished)
+        self.assertEqual([], logged_in)
+        task._home_bright_since = monotonic() - 3.1
+        AutoLoginTask.run(task)
 
         self.assertEqual("done", task._state)
         self.assertEqual([True], logged_in)
@@ -586,6 +591,11 @@ class AutoLoginSequenceTest(unittest.TestCase):
             enqueue_onetime_task=lambda t: enqueued.append(t) or True,
         )
 
+        AutoLoginTask.run(task)
+
+        self.assertEqual([], enqueued)
+        self.assertFalse(task._finished)
+        task._home_bright_since = monotonic() - 3.1
         AutoLoginTask.run(task)
 
         self.assertTrue(task._finished)

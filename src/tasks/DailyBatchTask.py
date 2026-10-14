@@ -37,9 +37,6 @@ from src.utils import game_size
 RUN_MODE_ALL = "all"
 RUN_MODE_INCOMPLETE = "incomplete"
 _VALID_RUN_MODES = frozenset({RUN_MODE_ALL, RUN_MODE_INCOMPLETE})
-# 「执行剩余」等请求的 run_mode 有效期：覆盖冷启动拉起游戏到设备就绪的
-# 常规耗时；超时未消费即作废，防止启动失败后的残留模式被手动点击继承。
-REQUESTED_RUN_MODE_VALIDITY_SECONDS = 600.0
 # 「完成日常后自动关机」的关机倒计时秒数：留出执行 shutdown /a 取消的窗口。
 SHUTDOWN_COUNTDOWN_SECONDS = 60
 
@@ -215,15 +212,10 @@ class ChildBatchTask(BaseTask):
     def request_run_mode(self, run_mode: str) -> None:
         """Select the next executor-driven run without persisting UI config.
 
-        请求带有效期（覆盖启动器拉起游戏到设备就绪的常规耗时）：启动失败
-        （do_start 异步失败、设备无法就绪）时 run() 不会执行、请求无法被
-        消费，过期后自动作废，避免残留的「仅执行今日未完成」被之后的
-        手动点击静默继承。
+        请求消费一次后清空；新的按钮操作会覆盖旧请求。等待登录或设备
+        就绪期间保留「跳过已完成」，不能超时后静默变成全部重跑。
         """
         self._requested_run_mode = self._validate_run_mode(run_mode)
-        self._requested_run_mode_deadline = (
-            time.monotonic() + REQUESTED_RUN_MODE_VALIDITY_SECONDS
-        )
 
     @staticmethod
     def _validate_run_mode(run_mode: str) -> str:
@@ -234,12 +226,9 @@ class ChildBatchTask(BaseTask):
     def _take_run_mode(self, explicit_run_mode: str | None) -> str:
         requested = getattr(self, "_requested_run_mode", RUN_MODE_ALL)
         self._requested_run_mode = RUN_MODE_ALL
-        if (
-            requested != RUN_MODE_ALL
-            and time.monotonic()
-            > getattr(self, "_requested_run_mode_deadline", 0.0)
-        ):
-            requested = RUN_MODE_ALL
+        # Slow startup must never turn a request to skip completed work into
+        # a full rerun. A new explicit request replaces this one; consumption
+        # resets it, so subsequent full starts still run everything selected.
         return self._validate_run_mode(explicit_run_mode or requested)
 
     def _delay_child_schedule(self, schedule_store, child_name: str, ok: bool) -> None:
@@ -280,12 +269,6 @@ class ChildBatchTask(BaseTask):
             return False
         batch._start_after_login = False
         batch._enabled = True
-        if getattr(batch, "_requested_run_mode", RUN_MODE_ALL) != RUN_MODE_ALL:
-            # A long login (patch download) must not expire "执行剩余" into
-            # a full run that repeats purchases done today.
-            batch._requested_run_mode_deadline = (
-                time.monotonic() + REQUESTED_RUN_MODE_VALIDITY_SECONDS
-            )
         if not executor.enqueue_onetime_task(batch):
             return False
         batch.log_info(f"{cls.batch_label}：自动登录已完成，开始执行。")
@@ -462,11 +445,18 @@ class ChildBatchTask(BaseTask):
                 self.log_error(f"{self.batch_label}：未找到子任务 {child.config_key}。")
                 continue
 
-            if history is not None and self._completed_this_period(history, str(task.name)):
+            already_done = history is not None and (
+                history.is_completed_this_week(str(task.name)) if child.weekly
+                else self._completed_this_period(history, str(task.name))
+            )
+            if already_done:
                 skipped.append(child.config_key)
                 pre_completed.append(child.config_key)
                 publish_outcome()
-                run_report.row_ended(child.config_key, run_report.SKIP, self.period_done_note)
+                run_report.row_ended(
+                    child.config_key, run_report.SKIP,
+                    "本周已经做完" if child.weekly else self.period_done_note,
+                )
                 self.log_info(f"{self.batch_label}：{child.config_key} 本期已完成，跳过。")
                 continue
 
@@ -506,6 +496,7 @@ class ChildBatchTask(BaseTask):
                     child_ok = bool(task.run())
                     self._raise_if_stopped()
                     self._child_finished[child.config_key] = time.time()
+                    self._save_child_result(task, child, child_ok)
                     if child_ok:
                         completed.append(child.config_key)
                         publish_outcome()
@@ -534,6 +525,7 @@ class ChildBatchTask(BaseTask):
             except Exception as exc:
                 self._raise_if_stopped()
                 self._child_finished[child.config_key] = time.time()
+                self._save_child_result(task, child, False)
                 failed.append(child.config_key)
                 publish_outcome()
                 run_report.row_ended(child.config_key, run_report.FAIL, "程序出错")
@@ -568,6 +560,18 @@ class ChildBatchTask(BaseTask):
         return True
 
     period_done_note = "今天已经做完"
+
+    def _save_child_result(self, task, child: DailyBatchChild, ok: bool) -> None:
+        from src.tasks.run_history import default_store
+
+        try:
+            default_store().record_child_result(
+                str(task.name), ok=ok,
+                started=self._child_started[child.config_key],
+                finished=self._child_finished[child.config_key],
+            )
+        except Exception as exc:
+            self.log_error(f"{self.batch_label}：保存 {child.config_key} 的完成进度失败。", exc)
 
     @staticmethod
     def _completed_this_period(history, task_name: str) -> bool:

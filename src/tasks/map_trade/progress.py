@@ -217,7 +217,7 @@ class ProgressStore:
             self.state.observed_counts = {}
             self.state.observed_limits = {}
             self.save()
-        elif schema_version != STATE_SCHEMA_VERSION:
+        elif self._clear_unsupported_depletion() or schema_version != STATE_SCHEMA_VERSION:
             # Persist the current shape immediately after an older compatible load.
             self.save()
         return self.state
@@ -657,10 +657,30 @@ class ProgressStore:
         # so only it decides.
         # Counted from the HUD and the presses proven here, not from unsettled
         # reservations (Leo 2026-10-07: judge by the game's result).
+        return len(remaining_targets) <= self.remaining_absorbs()
+
+    def remaining_absorbs(self) -> int:
         state = self._require_state()
         observed = state.observed_counts.get("吸收", (0, 0))[0]
-        used = max(state.daily_absorbs, observed)
-        return used + len(remaining_targets) <= self.limit_of("吸收")
+        return max(0, self.limit_of("吸收") - max(state.daily_absorbs, observed))
+
+    def _clear_unsupported_depletion(self) -> bool:
+        """Repair the old whole-card budget flag only with counts for every skill.
+
+        Insufficient room for three maps (e.g. 19/21) was saved as exhausted.
+        Preserve unknown or full counts; normal HUD checks still gate clicks.
+        """
+        state = self._require_state()
+        if not state.depleted_today:
+            return False
+        local = {"吸收": state.daily_absorbs, "召集": state.daily_summons,
+                 "压制": state.daily_suppressions}
+        for action, used in local.items():
+            observed = state.observed_counts.get(action)
+            if observed is None or max(used, observed[0]) >= min(observed[1], self.limit_of(action)):
+                return False
+        state.depleted_today = False
+        return True
 
     def arm_action(
         self,

@@ -5,7 +5,12 @@ from time import monotonic
 import numpy as np
 
 from src.tasks.map_trade.card_status import CardStatusDetector
-from src.tasks.map_trade.models import COLLECTABLE_CARDS, MapPageMode, ScreenState
+from src.tasks.map_trade.models import (
+    COLLECTABLE_CARDS,
+    STORY_NAVIGATION_ONLY_MAP_TITLES,
+    MapPageMode,
+    ScreenState,
+)
 from src.tasks.map_trade.navigator_constants import (
     BARGAIN_CONFIRM_POINT,
     BARGAIN_POINT,
@@ -237,6 +242,9 @@ class Navigator(StoryCardNavigationMixin, SandboxNavigationMixin, TradeNavigatio
             for card in COLLECTABLE_CARDS
             for target in card.targets
             for title in target.titles
+        ) or any(
+            normalize_text(title) in normalized_text
+            for title in STORY_NAVIGATION_ONLY_MAP_TITLES
         )
 
     def _detect_map_page_mode(self, frame: np.ndarray) -> MapPageDetection:
@@ -278,9 +286,8 @@ class Navigator(StoryCardNavigationMixin, SandboxNavigationMixin, TradeNavigatio
             evidence.extend(
                 (direct_evidence, generated_evidence, left_evidence, right_evidence)
             )
-            has_legend = normalize_text("传说") in normalized_header
             has_teleport_structure = left or right
-            if not has_teleport_structure and direct and not generated:
+            if not has_teleport_structure and direct != generated:
                 # On bright pages (华特波尔雪山, snow) the white arrows fail
                 # their templates (live 2K 2026-09-29); the page's own label
                 # "战斗Ⅰ 华特波尔雪山" / "安全 …" proves the same structure.
@@ -294,9 +301,12 @@ class Navigator(StoryCardNavigationMixin, SandboxNavigationMixin, TradeNavigatio
                 page_label = normalize_text(footer_text)
                 has_teleport_structure = "战斗" in page_label or "安全" in page_label
                 evidence.append(f"页面标签={footer_text or '-'}")
-            if direct and not generated and not has_legend and has_teleport_structure:
+            # Skill rank (初级/传说/etc.) is not the page identity.  Disabled
+            # arrows also occur on valid skill pages; the footer proves the
+            # map identity separately from subsequent page-change validation.
+            if direct and not generated and has_teleport_structure:
                 mode = MapPageMode.DIRECT_TELEPORT
-            elif generated and not direct and has_legend and has_teleport_structure:
+            elif generated and not direct and has_teleport_structure:
                 mode = MapPageMode.GENERATE_TELEPORT
         elif self._known_story_map_title_in_text(normalized_header):
             try:

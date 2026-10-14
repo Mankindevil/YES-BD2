@@ -109,6 +109,9 @@ class MapAutomationTaskBase(BaseBD2Task):
         completed: list[str] = []
         failed: list[str] = []
         skipped: list[str] = []
+        deferred: list[str] = []
+        deferred_reasons: list[str] = []
+        interrupted = False
         self.info_set("状态", f"{self.task_log_name}启动。")
         try:
             for name, config_key, action in phases:
@@ -127,7 +130,15 @@ class MapAutomationTaskBase(BaseBD2Task):
                     message = str(getattr(result, "message", ""))
                     if message:
                         self.log_info(f"{name}：{message}")
-                    (completed if success else failed).append(name)
+                    if success and (
+                        bool(getattr(result, "depleted", False))
+                        or bool(getattr(result, "deferred", False))
+                    ):
+                        deferred.append(name)
+                        if message:
+                            deferred_reasons.append(message)
+                    else:
+                        (completed if success else failed).append(name)
                     if not success:
                         self._save_diagnostic(f"{self.diagnostic_prefix}_{name}_failed")
                         self.log_warning(
@@ -144,33 +155,47 @@ class MapAutomationTaskBase(BaseBD2Task):
                         f"{self.task_log_name}：{name}异常，停止后续阶段。"
                     )
                     break
+        except (TaskDisabledException, FinishedException):
+            interrupted = True
+            raise
         finally:
-            self.info_set("当前阶段", "返回章节主页")
-            try:
-                returned = navigator.return_home()
-            except (TaskDisabledException, FinishedException):
-                raise
-            except Exception as exc:
-                self.log_error(f"{self.task_log_name}：返回章节主页异常。", exc)
-                self._save_diagnostic(f"{self.diagnostic_prefix}_return_home_error")
-                if not self._recover_home_after_trade():
-                    failed.append("返回章节主页")
-            else:
-                if not returned.success:
-                    self.log_warning(returned.message)
-                    self._save_diagnostic(f"{self.diagnostic_prefix}_return_home_error")
-                    if not self._recover_home_after_trade():
-                        failed.append("返回章节主页")
+            if not interrupted:
+                self._finish_trade_navigation(navigator, failed)
 
         self.info_set("完成", "、".join(completed) or "-")
         self.info_set("失败", "、".join(failed) or "-")
         self.info_set("跳过", "、".join(skipped) or "-")
+        self.info_set("待次日继续", "、".join(deferred) or "-")
         if failed:
             self.info_set("状态", f"{self.task_log_name}部分流程未完成。")
             return False
+        if deferred:
+            reason = "；".join(deferred_reasons) or "今日技能次数已用尽或不足"
+            message = f"{self.task_log_name}：{reason}；剩余地图待次日继续。"
+            self.info_set("状态", message)
+            self.log_completion(message)
+            return True
         self.info_set("状态", f"{self.task_log_name}完成。")
         self.log_completion(f"{self.task_log_name}：所有已开启流程完成。")
         return True
+
+    def _finish_trade_navigation(self, navigator, failed):
+        self.info_set("当前阶段", "返回章节主页")
+        try:
+            returned = navigator.return_home()
+        except (TaskDisabledException, FinishedException):
+            raise
+        except Exception as exc:
+            self.log_error(f"{self.task_log_name}：返回章节主页异常。", exc)
+            self._save_diagnostic(f"{self.diagnostic_prefix}_return_home_error")
+            if not self._recover_home_after_trade():
+                failed.append("返回章节主页")
+        else:
+            if not returned.success:
+                self.log_warning(returned.message)
+                self._save_diagnostic(f"{self.diagnostic_prefix}_return_home_error")
+                if not self._recover_home_after_trade():
+                    failed.append("返回章节主页")
 
     def _recover_home_after_trade(self) -> bool:
         """Never leave the game off home: fall back to back arrows and dialogs.

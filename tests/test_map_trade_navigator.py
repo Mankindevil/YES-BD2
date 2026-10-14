@@ -484,6 +484,8 @@ class NavigatorTest(unittest.TestCase):
             "已点击箱庭5号传送阵技能",
             map_page_mode=MapPageMode.GENERATE_TELEPORT,
         )
+        vision.capture = lambda: np.zeros((1080, 1920, 3), dtype=np.uint8)
+        navigator._optional_match = lambda *_args: teleport
         generation_calls = []
         navigator._click_teleport_generation = lambda received, shape: (
             generation_calls.append((received, shape)) or True
@@ -610,6 +612,9 @@ class NavigatorTest(unittest.TestCase):
     def test_restart_without_hunting_ground_starts_at_airin_in_town(self):
         card = CARD_BY_ID["Q_sp15"]
         navigator = Navigator(SimpleNamespace(), SimpleNamespace())
+        navigator._restore_field_after_map_failure = lambda: NavigationResult(
+            True, ScreenState.SANDBOX
+        )
         navigator.ensure_small_minimap = lambda: True
         navigator._click_sandbox_teleport_interaction = lambda *a, **k: False
         navigator._travel_to_hunting_ground = lambda: "艾琳"
@@ -1739,6 +1744,24 @@ class WalkToCollectionMapTest(unittest.TestCase):
         result = navigator._walk_to_collection_map(card, card.targets[1], card.targets[2])
         self.assertTrue(result.success)
         self.assertEqual([(610, 434), (607, 455)], clicks)
+
+    def test_visible_sixth_floor_exit_label_precedes_fixed_points_at_each_resolution(self):
+        card = CARD_BY_ID["Q_sp6"]
+        for width, height in ((1280, 720), (1920, 1080), (2560, 1440), (3840, 2160)):
+            navigator, clicks = self._navigator(
+                ["战斗Ⅰ施塔因之塔第6层", "战斗Ⅲ施塔因之塔第5层"], [""],
+            )
+            navigator.vision.capture = lambda: np.zeros((height, width, 3), np.uint8)
+            center = (round(width * 0.4), round(height * 0.45))
+            navigator.vision.ocr_boxes = lambda *_a, **_k: [
+                SimpleNamespace(name="施塔因之塔第5层", x=center[0]-10,
+                                y=center[1]-5, width=20, height=10),
+            ]
+            navigator.vision.simplify = lambda text: text
+            with self.subTest(size=(width, height)):
+                result = navigator._walk_to_collection_map(card, card.targets[1], card.targets[2])
+                self.assertTrue(result.success)
+                self.assertEqual(clicks, [(center[0], center[1] + round(18 * height / 1080))])
 
     def test_no_spot_reacting_fails_safely(self):
         card = CARD_BY_ID["Q_sp6"]

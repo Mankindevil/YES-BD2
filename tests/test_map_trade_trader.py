@@ -1120,7 +1120,7 @@ class SellFlowTest(unittest.TestCase):
 
         with patch(
             "src.tasks.map_trade.trader_sell.monotonic",
-            side_effect=(0.0, 0.0, 0.0),
+            return_value=0.0,
         ):
             self.assertTrue(
                 trader._sell_selected_entry(
@@ -1128,7 +1128,8 @@ class SellFlowTest(unittest.TestCase):
                 )
             )
 
-        self.assertEqual(1 + SALE_EMPTY_NAME_STABLE_HITS, len(locate_calls))
+        # Two unchanged drags each receive a fresh item scan before stopping.
+        self.assertEqual(1 + SALE_EMPTY_NAME_STABLE_HITS + 2, len(locate_calls))
         self.assertEqual(SALE_EMPTY_NAME_STABLE_HITS - 1, len(sleeps))
         self.assertEqual([], warnings)
         self.assertFalse(trader._last_sale_unavailable)

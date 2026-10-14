@@ -109,7 +109,22 @@ class Collector(SkillExecutionMixin):
             1, int(self.task.config.get("卡带单步重试次数", CARD_RETRY_DEFAULT))
         )
         allowed = chapter_filter(self.task.config.get("跑图章节", ""))
-        for card in COLLECTABLE_CARDS:
+        cards = list(COLLECTABLE_CARDS)
+        locate = getattr(self.navigator, "current_collection_location", None)
+        location = locate() if callable(locate) else None
+        current_card = next((card for card in cards if location and card.card_id == location[0]), None)
+        if (
+            current_card is not None
+            and (allowed is None or current_card.filter_key in allowed)
+            and current_card.number not in UNSUPPORTED_COLLECTION_CARD_NUMBERS
+            and len(state.completed_targets(current_card.card_id)) < len(current_card.targets)
+        ):
+            cards.remove(current_card)
+            cards.insert(0, current_card)
+            self._status("采集进度", f"优先处理当前卡带 {current_card.card_id}")
+        else:
+            location = None
+        for card in cards:
             if allowed is not None and card.filter_key not in allowed:
                 continue
             if card.number in UNSUPPORTED_COLLECTION_CARD_NUMBERS:
@@ -148,29 +163,39 @@ class Collector(SkillExecutionMixin):
                 )
 
             if not self._can_finish_card_today(card, completed):
-                self.progress.mark_depleted_today()
+                remaining = self.progress.remaining_absorbs()
+                needed = len(card.targets) - len(completed)
+                depleted = remaining == 0
+                if depleted:
+                    self.progress.mark_depleted_today()
                 return CollectionResult(
                     True,
-                    depleted=True,
+                    depleted=depleted,
+                    deferred=not depleted,
                     completed_submaps=completed_this_run,
-                    message="今日剩余吸取/召集/压制次数不足以安全完成下一张卡带",
+                    message=("吸收次数已到每日上限，剩余地图待次日继续" if depleted else
+                             f"吸收还剩{remaining}次，{card.card_id}剩余{needed}张地图需要{needed}次；"
+                             "按整张卡带完成规则暂缓，未达到每日上限"),
                 )
 
             selected = None
-            for _attempt in range(card_retries):
-                selected = self.navigator.select_collection_card(
-                    card.card_id,
-                    enter_visually_complete=False,
-                )
-                if selected.success:
-                    break
-            if selected is None or not selected.success:
+            already_here = location if location and location[0] == card.card_id else None
+            location = None  # A snapshot is consumed once, before any other card navigation.
+            if already_here is None:
+                for _attempt in range(card_retries):
+                    selected = self.navigator.select_collection_card(
+                        card.card_id,
+                        enter_visually_complete=False,
+                    )
+                    if selected.success:
+                        break
+            if already_here is None and (selected is None or not selected.success):
                 return CollectionResult(
                     False,
                     completed_submaps=completed_this_run,
                     message=f"未能进入卡带 {card.card_id}",
                 )
-            if selected.outcome == CollectionCardSelectionOutcome.VISUALLY_COMPLETE:
+            if selected is not None and selected.outcome == CollectionCardSelectionOutcome.VISUALLY_COMPLETE:
                 self._status(
                     "卡带完成度",
                     f"{card.card_id}进入前确认吸取与压制均已完成，记为本周完成",
@@ -178,11 +203,9 @@ class Collector(SkillExecutionMixin):
                 self.progress.mark_card_complete_from_badge(card.card_id)
                 continue
 
-            # Route (user 2026-09-28): on the last map (e.g. chapter 6's 第5层)
-            # go backwards (第5层 -> walk 第6层 -> 第1层); anywhere else start
-            # from the town (第1层 -> 第6层 -> walk 第5层).  If a move fails,
-            # the safe restart: hunting ground -> the town -> start over.
-            here = self.navigator.current_collection_target(card)
+            # Start on the confirmed current map, retaining card-specific
+            # transit rules. Failed moves still restart through the town.
+            here = already_here[1] if already_here else self.navigator.current_collection_target(card)
             keys = [target.key for target in card.targets]
             order = [target for target in card.targets if target.key not in completed]
             if here == keys[-1]:
@@ -191,16 +214,19 @@ class Collector(SkillExecutionMixin):
                     order = order[-1:] + order[:-1]
                 else:
                     order.reverse()
+            elif here in keys and here != keys[0]:
+                index_here = keys.index(here)
+                route = list(card.targets[index_here:]) + list(reversed(card.targets[:index_here]))
+                order = [target for target in route if target.key not in completed]
             self._status(
                 "采集进度",
                 f"{card.card_id} 当前={here or '未知'}；顺序="
                 + "→".join(target.title for target in order),
             )
             current = next((target for target in card.targets if target.key == here), None)
-            if here not in (keys[0], keys[-1]):
-                # Leo 2026-09-29: only two routes exist (town -> ... -> last,
-                # or last -> ... -> town).  Anywhere else: hunting ground ->
-                # the town, then the forward route.
+            if here not in keys:
+                # Only an unknown location needs a route reset. A confirmed
+                # middle map is itself a valid collection starting point.
                 self._status("采集进度", f"{card.card_id} 不在起点或终点，经狩猎场或艾琳回主城")
                 reset = self.navigator.prepare_collection_main_area(
                     card.card_id, via_hunting_ground=True
@@ -412,6 +438,18 @@ class Collector(SkillExecutionMixin):
             if not arrived.success or target.key == card.targets[0].key:
                 return arrived
             current = card.targets[0]
+        # Chapter 6's fifth floor has no teleport page. A completed sixth
+        # floor still has to be traversed after resetting to town (or when
+        # leaving the fifth floor); completion only skips its skill actions.
+        if card.card_id == "Q_sp6" and {current.key, target.key} == {
+            card.targets[0].key, card.targets[2].key,
+        }:
+            transit = card.targets[1]
+            self._status("采集进度", f"经{transit.title}中转前往{target.title}，不重复采集中转图")
+            arrived = self.navigator.advance_collection_map(card.card_id, current, transit)
+            if not arrived.success:
+                return arrived
+            current = transit
         return self.navigator.advance_collection_map(card.card_id, current, target)
 
     def _can_finish_card_today(self, card, completed: set[str]) -> bool:

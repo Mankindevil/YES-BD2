@@ -2115,7 +2115,7 @@ class StoryCardNavigationMixin:
             # Just confirmed (or the last card was only looked at): the page,
             # its OCR and the tab OCR cost ~2.6 s per card (Leo 2026-10-05).
             self._status("导航状态", f"沿用已确认的{label}页")
-        elif self.classify() == ScreenState.CARD_MENU:
+        elif (current_state := self.classify()) == ScreenState.CARD_MENU:
             if not self._wait_for_quick_switch_page():
                 return NavigationResult(
                     False,
@@ -2135,10 +2135,14 @@ class StoryCardNavigationMixin:
                     f"当前快速切换页未确认{label}类别",
                 )
         else:
-            returned = self.return_home()
-            if not returned.success:
-                return returned
-            menu = self._open_story_quick_switcher(category)
+            menu = None
+            if current_state == ScreenState.SANDBOX:
+                menu = self.open_story_quick_switcher_from_sandbox(category=category)
+            if menu is None or not menu.success:
+                returned = self.return_home()
+                if not returned.success:
+                    return returned
+                menu = self._open_story_quick_switcher(category)
             if not menu.success:
                 return menu
 
@@ -2341,6 +2345,13 @@ class StoryCardNavigationMixin:
                 navigation,
             )
 
+        location = self.current_collection_location()
+        if location is not None and location[0] == card_id:
+            self._status("导航状态", f"已在{card_id}/{location[1]}，直接沿用当前箱庭")
+            return CollectionCardSelectionResult(
+                CollectionCardSelectionOutcome.ENTERED,
+                NavigationResult(True, ScreenState.SANDBOX, f"沿用当前卡带{card_id}"),
+            )
         located = self._locate_story_card(card_id)
         if isinstance(located, NavigationResult):
             return CollectionCardSelectionResult(

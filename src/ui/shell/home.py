@@ -368,7 +368,12 @@ class LiveView(QWidget):
 
 # How long a 「调整」 result stays before the live window size shows again.
 MESSAGE_SECONDS = 8.0
-GAME_SIZES = {(1920, 1080): "1080p", (2560, 1440): "2K", (3840, 2160): "4K"}
+GAME_SIZES = {
+    (1920, 1080): "1080p",
+    (2560, 1440): "2K",
+    (2560, 1600): "16:10",
+    (3840, 2160): "4K",
+}
 
 
 class GameSizeCard(Card):
@@ -390,7 +395,7 @@ class GameSizeCard(Card):
         )
 
         self._format = format_resolution
-        # Only the three sizes the tool is built and tested for (Leo, 2026-10-03).
+        # Include the 16:10 client with its centered 16:9 game viewport.
         self._sizes = tuple(size for size in GAME_SIZES if size in MANUAL_RESOLUTIONS)
         row = hbox(self, (18, 12, 18, 12), 12)
         row.addWidget(IconTile("monitor", 32, 17))
@@ -540,8 +545,9 @@ class HomePage(Page):
             on_click=lambda: self._start_batch(data.DAILY_BATCH, all_items=True),
         )
         self.start_rest = Button(
-            "", "ghost", on_click=lambda: self._start_batch(data.DAILY_BATCH, False)
+            "", "secondary", on_click=lambda: self._start_batch(data.DAILY_BATCH, False)
         )
+        self.start_rest.setToolTip(t("跳过今天已完成的项目（周常按本周），只执行尚未完成的已勾选项目"))
         # Leo (2026-10-03): a separate start for 桌面分身, no mode switch.
         self.start_clone = Button(
             "后台运行（桌面分身）",
@@ -642,8 +648,8 @@ class HomePage(Page):
                 if estimate
                 else "第一次跑，跑完就知道要多久"
             )
-            self.start_rest.set_label(tf("只跑剩下的 {n} 项", n=len(remaining)))
-            self.start_rest.setVisible(len(remaining) < len(included))
+            self.start_rest.set_label(tf("跳过已完成（剩余 {n} 项）", n=len(remaining)))
+            self.start_rest.show()
         else:
             self.hero_title.set_text("今天的日常都做完了")
             self.hero_sub.set_text(tf("下次刷新 {next}", next=data.next_refresh_text()))
@@ -657,14 +663,13 @@ class HomePage(Page):
             name = stopped_name(stopped)
             self.hero_sub.set_text(tf("上次在「{name}」手动停止，做完的不会再跑", name=name))
             self.resume.set_label(tf("从「{name}」继续", name=name))
-            self.start_rest.hide()
         if clone_flow.busy_in_clone():
             # The tool on the 桌面分身 is running; this one shows its progress.
             self.hero_sub.set_text("工具正在桌面分身里跑，这里会跟着更新")
             busy = True
-        self.start_all.set_label("再跑一次全部" if included and not remaining else "一键完成日常")
+        self.start_all.set_label("重新运行全部" if done else "一键完成日常")
         self.start_all.setEnabled(not busy and batch is not None)
-        self.start_rest.setEnabled(not busy)
+        self.start_rest.setEnabled(not busy and batch is not None)
         self.resume.setEnabled(not busy and batch is not None)
         # Still usable then: the tool in the clone takes the run when it is free.
         self.start_clone.setEnabled(not data.busy() and clone_flow.available())

@@ -26,6 +26,9 @@ class MapCollectionTask(MapAutomationTaskBase):
         "启用",
         "状态",
         "当前阶段",
+        "当前画面",
+        "当前位置",
+        "启动方式",
         "导航状态",
         "主页小屋按钮",
         "主页亮度",
@@ -65,6 +68,7 @@ class MapCollectionTask(MapAutomationTaskBase):
         "完成",
         "失败",
         "跳过",
+        "待次日继续",
         "Log",
         "Warning",
         "Error",
@@ -75,7 +79,7 @@ class MapCollectionTask(MapAutomationTaskBase):
         self.name = "每周跑图"
         self.description = (
             "按周进度跑剧情卡带；每天最多7张，每张安全区吸收1次，"
-            "战斗区域1、2各执行吸收、召集、压制。"
+            "优先从当前地图开始，战斗区域1、2按召集、吸收、压制执行。"
         )
         self.icon = FluentIcon.GLOBE
         # Shown and part of 一键完成日常 (user, 2026-09-28): it runs every day
@@ -93,6 +97,7 @@ class MapCollectionTask(MapAutomationTaskBase):
                 MAP_OCR_THRESHOLD_KEY: 0.20,
                 "加载页面等待秒数": 15.0,
                 "卡带单步重试次数": 2,
+                "采集技能等待秒数": 2.0,
                 "本次最多卡带数": 0,
                 "跑图章节": "全部",
             }
@@ -107,6 +112,7 @@ class MapCollectionTask(MapAutomationTaskBase):
                 MAP_OCR_THRESHOLD_KEY: "技能次数和按钮识别的最低可信度。",
                 "加载页面等待秒数": "进入卡带、传送或换图后画面卡住多久算失败；自动移动中的时间不算。",
                 "卡带单步重试次数": "单张卡带进入或单步操作失败时的尝试次数。",
+                "采集技能等待秒数": "每个技能反馈后等待动画结束，再确认结果；召集漏按时可调至3秒。",
                 "本次最多卡带数": "本次运行最多完成几张卡带；0 表示直到今日技能次数用完。",
                 "跑图章节": "只跑这些章节，例如 8-13 或 1,3,5，角色卡 R1-R7，活动卡 E1-E7；全部 = 不限。",
             }
@@ -120,6 +126,7 @@ class MapCollectionTask(MapAutomationTaskBase):
                             MAP_OCR_THRESHOLD_KEY,
                             "加载页面等待秒数",
                             "卡带单步重试次数",
+                            "采集技能等待秒数",
                             "本次最多卡带数",
                         ]
                     }
@@ -128,9 +135,22 @@ class MapCollectionTask(MapAutomationTaskBase):
                 MAP_OCR_THRESHOLD_KEY: {"min": 0.05, "max": 0.95, "step": 0.01},
                 "加载页面等待秒数": {"min": 10.0, "max": 120.0, "step": 1.0},
                 "卡带单步重试次数": {"min": 1, "max": 5},
+                "采集技能等待秒数": {"min": 2.0, "max": 5.0, "step": 0.5},
                 "本次最多卡带数": {"min": 0, "max": 7},
             }
         )
+
+    def can_start_from_current_screen(self) -> bool:
+        from src.tasks.map_trade.models import ScreenState
+
+        state = Navigator(self, Vision(self)).classify()
+        self.info_set("当前画面", state.value)
+        # These pages have dedicated checks in the collector/navigation flow.
+        # This only preserves the page; it never implies the right card is open.
+        return state in {
+            ScreenState.SANDBOX, ScreenState.CARD_MENU,
+            ScreenState.AREA_MAP, ScreenState.SANDBOX_MAP,
+        }
 
     def run(self):
         if not bool(self.config.get("启用", True)):
@@ -211,8 +231,11 @@ class MapRouteTestTask(MapCollectionTask):
                 order = order[-1:] + order[:-1]
             else:
                 order.reverse()
-        elif here != order[0].key:
-            # Same rule as the collector: anywhere else -> hunting ground (or 艾琳) -> town.
+        elif current is not None:
+            index_here = order.index(current)
+            order = order[index_here:] + list(reversed(order[:index_here]))
+        else:
+            # Unknown locations still need the verified route reset.
             reset = navigator.prepare_collection_main_area(card.card_id, via_hunting_ground=True)
             if not reset.success:
                 return f"{card.label} 回主城失败（{reset.message}）"

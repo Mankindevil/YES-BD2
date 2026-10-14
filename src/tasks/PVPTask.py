@@ -421,6 +421,11 @@ class PVPTask(BaseBD2Task):
             if attempt >= PVP_CLICK_VERIFY_ATTEMPTS or not self._quick_switch_still_shows(
                 highlighted=False, seconds=1.0
             ):
+                # The selection can finish between the timeout and the retry
+                # guard. Confirm that state before treating a changed page as
+                # failure; never click a slot on OCR text alone.
+                if self._quick_switch_still_shows(highlighted=True, seconds=0.5):
+                    break
                 self.log_info("镜中之战：点击后未确认战斗玩法游戏卡带类别高亮。")
                 return False
             self.log_info(f"镜中之战：第{attempt}次点击战斗玩法类别未生效，重试。")
@@ -448,8 +453,10 @@ class PVPTask(BaseBD2Task):
         end_at = monotonic() + float(self.config.get("玩法类别高亮确认秒数", 3.0))
         last_text = ""
         last_highlight_ratio = 0.0
+        last_frame = None
         while monotonic() <= end_at:
             frame = self.capture_frame()
+            last_frame = frame
             text = self._ocr_text(
                 frame,
                 name="战斗玩法游戏卡带",
@@ -479,6 +486,13 @@ class PVPTask(BaseBD2Task):
             "镜中之战：未确认战斗玩法游戏卡带类别高亮，"
             f"highlight={last_highlight_ratio:.3f}, OCR={last_text or '-'}。"
         )
+        if last_frame is not None:
+            try:
+                self.save_frame("pvp_battle_category_failed", last_frame)
+            except (TaskDisabledException, FinishedException):
+                raise
+            except Exception as exc:
+                self.log_info(f"镜中之战：类别诊断截图保存失败：{exc}")
         return False
 
     def _quick_switch_still_shows(self, highlighted: bool, seconds: float) -> bool:

@@ -84,13 +84,34 @@ class SaleListSearchTest(unittest.TestCase):
         self.assertEqual(found, trader._find_sale_item_candidates(ALMOND))
         self.assertEqual([-1], scrolls)
 
-    def test_search_stops_when_the_list_no_longer_moves(self):
+    def test_search_stops_after_two_still_drags_and_fresh_reads(self):
         import numpy as np
 
         still = np.zeros((64, 96), np.int16)
-        trader, scrolls = self.trader([(None, False)], [still, still])
+        trader, scrolls = self.trader([(None, False)] * 3, [still] * 4)
         self.assertIsNone(trader._find_sale_item_candidates(ALMOND))
+        self.assertEqual([-1, -1], scrolls)
+
+    def test_unchanged_frame_is_rechecked_before_declaring_item_missing(self):
+        import numpy as np
+
+        still = np.zeros((64, 96), np.int16)
+        found = (["steel"], "frame")
+        trader, scrolls = self.trader([(None, False), (found, True)], [still, still])
+        self.assertEqual(found, trader._find_sale_item_candidates(ALMOND))
         self.assertEqual([-1], scrolls)
+
+    def test_one_unresponsive_drag_does_not_end_the_search(self):
+        import numpy as np
+
+        still = np.zeros((64, 96), np.int16)
+        lower = np.full((64, 96), 50, np.int16)
+        found = (["steel"], "frame")
+        trader, scrolls = self.trader(
+            [(None, False), (None, False), (found, True)], [still, still, still, lower]
+        )
+        self.assertEqual(found, trader._find_sale_item_candidates(ALMOND))
+        self.assertEqual([-1, -1], scrolls)
 
     def test_no_scrolling_when_the_name_is_on_screen(self):
         trader, scrolls = self.trader([(None, True)], [])

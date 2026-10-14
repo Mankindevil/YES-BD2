@@ -9,6 +9,7 @@ from ok.util.GlobalConfig import create_basic_options
 
 from src import GAME_EXE, HWND_CLASS
 from src.capture.hdr_wgc import install as install_hdr_aware_capture
+from src.capture.letterbox import install as install_letterbox_capture
 from src.compat.about_tab_layout import install_about_tab_layout
 from src.compat.launcher_update_notice import install_launcher_update_notice
 from src.compat.main_window_geometry import install_main_window_geometry_debounce
@@ -43,6 +44,7 @@ enable_windows_10_wgc()
 # Windows HDR: capture 16-bit float and convert back to the game's SDR image
 # (8-bit WGC frames come out over-exposed and every colour check drifts).
 install_hdr_aware_capture()
+install_letterbox_capture()
 # OCR memory: cap OpenVINO's per-input-size kernel cache (grew to 9.6 GB).
 install_ocr_memory_cap()
 enable_starter_launch_uri()

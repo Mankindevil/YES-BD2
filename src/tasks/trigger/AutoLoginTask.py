@@ -161,8 +161,11 @@ class AutoLoginTask(BaseBD2Task):
 
     def on_create(self):
         self._enabled = bool(self.config.get("_enabled", True))
-        self._set_stage("等待登录页")
-        self._set_action("自动登录已启用，等待启动游戏后的画面识别。")
+        self._set_stage("等待登录页" if self._enabled else "已停用")
+        self._set_action(
+            "自动登录已启用，等待启动游戏后的画面识别。"
+            if self._enabled else "自动登录已停用；手动登录后，日常仍会检查并清理主页弹窗。"
+        )
 
     def enable(self):
         was_enabled = self._enabled
@@ -207,22 +210,18 @@ class AutoLoginTask(BaseBD2Task):
             return False
 
         if self._state in PRELOGIN_STATES:
+            from src.tasks.recovery import dismiss_login_overlay
+
+            # A manually completed login may start with the home UI entirely
+            # covered by sign-in rewards, so it has no login/home anchor yet.
+            if dismiss_login_overlay(self, frame):
+                self._begin_home_confirmation()
+                return False
             confirmed, _button, _spec, _ratio, _gacha_text = (
                 self._home_confirmation_signals(frame)
             )
             if confirmed:
-                self._check_capture_colours(frame)
-                self.mark_logged_in()
-                self._finished = True
-                self._state = "done"
-                self._release_login_gated_batch()
-                self._set_stage("已完成")
-                self._set_action("主页三项信号已确认，跳过自动登录。")
-                self.log_info(
-                    "自动登录：主页按钮、亮度和抽抽乐 OCR 已同时命中，跳过登录流程。",
-                    notify=True,
-                )
-                return False
+                self._begin_home_confirmation()
 
         if self._state == "clearing":
             # clearing 帧不经过 _wait_loading_then_home 的超时检查，必须
@@ -238,17 +237,19 @@ class AutoLoginTask(BaseBD2Task):
         return self._wait_browndustx_then_login(frame)
 
     def finish_in_game(self) -> bool:
-        """Mark login done when the game is already inside (brought home by
-        the batch that was waiting for it); True when it was pending."""
+        """Recovery reached home; keep the batch gated until stable confirmation."""
         if self._finished or self._state not in PRELOGIN_STATES:
             return False
-        self.mark_logged_in()
-        self._finished = True
-        self._state = "done"
-        self._set_stage("已完成")
-        self._set_action("游戏已在游戏内，回到主页后跳过自动登录。")
-        self.log_info("自动登录：游戏已在游戏内（不在主页），已回到主页，跳过登录流程。")
-        return True
+        self._begin_home_confirmation()
+        return False
+
+    def _begin_home_confirmation(self) -> None:
+        self._state = "clearing"
+        self._home_bright_since = None
+        if self._login_clicked_at is None:
+            self._login_clicked_at = monotonic()
+        self._set_stage("主页确认中")
+        self._set_action("已回到游戏内，等待签到、公告清理完毕并连续确认主页。")
 
     def _wait_browndustx_then_login(self, frame) -> bool:
         if self._state not in ("waiting", "browndustx"):
@@ -655,6 +656,15 @@ class AutoLoginTask(BaseBD2Task):
         home_spec: TemplateSpec | None = None,
         allow_dimmed: bool = False,
     ) -> bool:
+        from src.tasks.recovery import dismiss_login_overlay
+
+        # Sign-in cards can overlap the brightness sample and pass the home
+        # signals. Check the known overlays before counting a stable frame.
+        if dismiss_login_overlay(self, frame):
+            self._home_bright_since = None
+            self._state = "clearing"
+            self._last_clear_click_at = monotonic()
+            return False
         if home_button is None:
             home_button, home_spec = self._match_home_button(frame)
         elif home_spec is None:
@@ -840,13 +850,7 @@ class AutoLoginTask(BaseBD2Task):
         except Exception as exc:
             self.log_warning(f"自动登录：回主页失败：{exc}")
             return False
-        self.mark_logged_in()
-        self._finished = True
-        self._state = "done"
-        self._release_login_gated_batch()
-        self._login_retry_not_before = 0.0
-        self._set_stage("已完成")
-        self._set_action("游戏已在游戏内，回到主页后结束自动登录。")
+        self._begin_home_confirmation()
         return True
 
     def _home_brightness_ratio(self, frame) -> float:

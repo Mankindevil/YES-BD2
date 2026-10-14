@@ -20,6 +20,7 @@ logger = Logger.get_logger(__name__)
 
 MANUAL_RESOLUTIONS: tuple[tuple[int, int], ...] = (
     (3840, 2160),
+    (2560, 1600),
     (2560, 1440),
     (1920, 1080),
     (1600, 900),
@@ -553,4 +554,3 @@ class ManualResolutionController(QObject):
         self._busy = False
         self._job = None
         self._worker_thread = None
-

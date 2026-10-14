@@ -23,7 +23,10 @@ from src.tasks.map_trade.models import ScreenState
 from src.tasks.map_trade.navigator import Navigator
 from src.tasks.map_trade.vision import Vision
 from src.tasks.task_vision_mixin import REFERENCE_HEIGHT, REFERENCE_WIDTH
-from src.utils.home_confirmation import HOME_LEFT_COLUMN_REQUIRED_HITS
+from src.utils.home_confirmation import (
+    HOME_ANNOUNCEMENT_CLEAR_RELATIVE_POINT,
+    HOME_LEFT_COLUMN_REQUIRED_HITS,
+)
 from src.utils.ocr_utils import fuzzy_substring_match, normalize_ocr_text
 
 RECOVERY_ATTEMPTS = 6
@@ -69,6 +72,31 @@ TITLE_SCREEN_TEXTS = ("touchtostart",)
 TITLE_SCREEN_FUZZY_RATIO = 0.8
 
 
+def _login_overlay_point(boxes):
+    """Only known login rewards/notices; never a generic confirm button."""
+    names = [normalize_ocr_text(getattr(box, "name", "")) for box in boxes]
+    text = "".join(names)
+    # The saved 2026-10-11 notice list has multiple 公告 badges and dated
+    # entries. Its X is inside the panel; tapping outside does not close it.
+    if sum(name == "公告" for name in names) >= 2 and re.search(r"20\d{2}年\d{1,2}月", text):
+        return (1328 / 1920, 275 / 1080), "公告列表"
+    if "签到成功" in text and ("登录" in text or "每天签到" in text):
+        return HOME_ANNOUNCEMENT_CLEAR_RELATIVE_POINT, "登录签到"
+    return None
+
+
+def dismiss_login_overlay(task, frame) -> bool:
+    """Handle stacked login overlays even when their bright art looks like home."""
+    boxes = Vision(task).ocr_boxes(frame, "登录弹窗")
+    match = _login_overlay_point(boxes)
+    if match is None:
+        return False
+    point, label = match
+    task.log_info(f"登录弹窗：关闭{label}，等待下一张画面确认。")
+    task.operate_click(*point, after_sleep=1.0)
+    return True
+
+
 def _handle_dialog(task, vision: Vision) -> str:
     """Close one known dialog: "dismissed", "title" (title screen) or "none"."""
 
@@ -83,6 +111,13 @@ def _handle_dialog(task, vision: Vision) -> str:
         for title in TITLE_SCREEN_TEXTS
     ):
         return "title"
+
+    overlay = _login_overlay_point(boxes)
+    if overlay is not None:
+        point, label = overlay
+        task.log_info(f"恢复主页：关闭{label}。")
+        task.operate_click(*point, after_sleep=1.0)
+        return "dismissed"
 
     target, label = None, ""
     for keyword in DISMISS_TEXTS:
@@ -133,7 +168,11 @@ def _home_now(navigator) -> bool:
     vision = getattr(navigator, "vision", None)
     if signals is None or vision is None:
         return False
-    return bool(signals(vision.capture())[0])
+    frame = vision.capture()
+    if not signals(frame)[0]:
+        return False
+    task = getattr(navigator, "task", None)
+    return not (task is not None and dismiss_login_overlay(task, frame))
 
 
 def _wait_home_briefly(task, navigator, timeout: float) -> bool:
@@ -245,7 +284,9 @@ def recover_to_home(task, attempts: int = RECOVERY_ATTEMPTS) -> bool:
         state = navigator.classify()
         task.info_set("恢复主页", f"第{attempt}次：{state.value}")
         if state == ScreenState.HOME:
-            return True
+            if _home_now(navigator):
+                return True
+            continue
         if state in NAVIGATOR_STATES:
             try:
                 if navigator.return_home().success:

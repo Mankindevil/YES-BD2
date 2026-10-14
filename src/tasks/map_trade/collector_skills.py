@@ -63,13 +63,13 @@ SKILL_DAILY_LIMITS = {
 }
 
 
-# Pause between back-to-back skill presses (Leo 2026-09-29: 0.5 s; 10-09
-# 0.8 s after a player's 「召集点的太快了经常点不上」 on a slower PC).
-PIPELINE_CLICK_INTERVAL = 0.8
+# Minimum settling time after feedback, before checking the result and
+# preparing another skill. A toast can appear before the animation ends.
+PIPELINE_CLICK_INTERVAL = 2.0
+SKILL_SETTLE_KEY = "采集技能等待秒数"
 PIPELINE_RECHECK_SECONDS = 0.6
-# A press the game did not take (a player 2026-10-09: 「召集点的太快了经常点
-# 不上失败」) is pressed once more after a pause, and then taken as done
-# (Leo: 「补按后 你就不要管了」).
+# A confirmed missed press gets one delayed retry, with the same proof
+# requirements as the first attempt. A retry alone never means success.
 PRESS_AGAIN_PAUSE_SECONDS = 1.5
 # Slot count readers by icon name (the 压制 icon is named 制服).
 COUNT_ACTIONS_BY_ICON = {
@@ -754,22 +754,19 @@ class SkillExecutionMixin:
 
         depleted = False
         pending_actions: list[str] = []
-        # Leo 2026-09-29: the slots are fixed, so the three skills are
-        # pressed back to back and verified afterwards (was detect / click /
-        # wait / verify one at a time, ~10 s per battle map at 2K).
+        # Finish and verify each skill before preparing the next one.
         self._missed_presses = set()
-        self._pressed_again = set()
         results = self._use_actions_pipelined(actions, card_id=card_id, map_role=map_role)
         missed = next((result for result in results if not result.completed), None)
         if missed is not None and missed.press_again:
             # Done skills are skipped on the next pass by their records; the
             # bright one is pressed again (its record turns void first).
+            retry_pause = max(PRESS_AGAIN_PAUSE_SECONDS, self._skill_settle_seconds())
             self._status(
                 "采集技能",
-                f"{missed.message}；按钮还亮着，等{PRESS_AGAIN_PAUSE_SECONDS:.1f}秒补按一次",
+                f"{missed.message}；按钮还亮着，等{retry_pause:.1f}秒补按一次",
             )
-            self._pressed_again = set(self._missed_presses)
-            self.task.sleep(PRESS_AGAIN_PAUSE_SECONDS)
+            self.task.sleep(retry_pause)
             results = self._use_actions_pipelined(actions, card_id=card_id, map_role=map_role)
         for result in results:
             if not result.completed:
@@ -791,6 +788,13 @@ class SkillExecutionMixin:
             tuple(pending_actions),
         )
 
+    def _skill_settle_seconds(self) -> float:
+        try:
+            value = float(self.task.config.get(SKILL_SETTLE_KEY, PIPELINE_CLICK_INTERVAL))
+        except (TypeError, ValueError):
+            value = PIPELINE_CLICK_INTERVAL
+        return max(PIPELINE_CLICK_INTERVAL, min(5.0, value))
+
     def _use_actions_pipelined(
         self,
         actions: tuple[SkillAction, ...],
@@ -798,18 +802,23 @@ class SkillExecutionMixin:
         card_id: str,
         map_role: CollectionMapRole,
     ) -> list[SkillExecutionResult]:
-        """Prepare every action, click them in a row, then verify each.
+        """Execute in order with fresh coordinates and verified results.
 
-        The per-action safety is unchanged: the same stable icon detection,
-        count baseline, ARMED/CLICKED records and post-click proof (icon
-        used + feedback or an exact +1 count) as ``_use_action``.  Only the
-        order differs, and the 0.8 s pause after each toast is gone (a
-        hidden toast is covered by the +1 count proof).  The first action
-        that cannot be prepared stops the batch before any later click.
+        Retain this entry point for callers; skills are no longer prepared
+        together or clicked before the previous skill has been verified.
         """
         results: list[SkillExecutionResult] = []
-        armed: list[tuple[SkillAction, object, ActionIconDetection, tuple[int, int]]] = []
         map_done = False
+        if actions and actions[0] == SUMMON_ACTION and ABSORB_ACTION in actions:
+            # Check weekly completion before spending a summon, without
+            # arming an absorb intent or reusing its coordinates later.
+            self._grey_done = False
+            early, _ = self._prepare_action(
+                ABSORB_ACTION, card_id=card_id, map_role=map_role, check_only=True,
+            )
+            if early is not None and not early.completed:
+                return [early]
+            map_done = early is not None and self._grey_done
         for action in actions:
             if map_done:
                 # Leo 2026-10-07: a grey 吸收 (with 探查 on) means the map was
@@ -829,15 +838,7 @@ class SkillExecutionMixin:
                 if not early.completed:
                     break
                 continue
-            armed.append(prepared)
-        stop_after = len(results) if results and not results[-1].completed else None
-        clicked = []
-        last_click_at = None
-        for action, frame, detection, before in armed:
-            if last_click_at is not None:
-                # Slower PCs missed presses 0.5 s apart (player, 2026-10-09).
-                self.task.sleep(max(0.0, PIPELINE_CLICK_INTERVAL - (monotonic() - last_click_at)))
-            last_click_at = monotonic()
+            _action, frame, detection, before = prepared
             self.vision.click_client(
                 detection.match.center,
                 frame.shape,
@@ -845,13 +846,9 @@ class SkillExecutionMixin:
             )
             self.progress.mark_action_clicked(card_id, map_role, action.name)
             feedback = self._read_action_feedback(action)
-            clicked.append((action, detection, before, feedback))
-        if clicked:
-            # Let the last icon finish greying before it is judged (live 2K
-            # 2026-09-29: a lone 吸收 read "absent" right after the click).
-            self.task.sleep(ACTION_FEEDBACK_SUCCESS_DELAY_SECONDS)
-        verified = []
-        for action, detection, before, feedback in clicked:
+            settle = self._skill_settle_seconds()
+            self._status("采集技能", f"{action.name}反馈后等待{settle:.1f}秒，再确认结果")
+            self.task.sleep(settle)
             _post_frame, post_detection = self._detect_action_icon(
                 action.icon,
                 require_stable=True,
@@ -872,17 +869,10 @@ class SkillExecutionMixin:
                 post_detection=post_detection,
                 feedback=feedback,
             )
-            if not result.completed and action.name in getattr(self, "_pressed_again", ()):
-                # Leo 2026-10-09: a missed press is almost always fixed by
-                # the second one, so it is not checked again.
-                self.progress.mark_action_seen_done(card_id, map_role, action.name)
-                self._status(f"{action.name}状态", "已补按一次，不再检查")
-                result = SkillExecutionResult(True, result.depleted, "已补按一次，不再检查")
-            verified.append(result)
-        if stop_after is not None:
-            # Keep the order: verified clicks first, then the failure.
-            return verified + results
-        return results + verified
+            results.append(result)
+            if not result.completed:
+                break
+        return results
 
     def _prepare_action(
         self,
@@ -890,6 +880,7 @@ class SkillExecutionMixin:
         *,
         card_id: str,
         map_role: CollectionMapRole,
+        check_only: bool = False,
     ):
         """(early result, None) or (None, (action, frame, detection, before))."""
         existing = self.progress.get_action_record(card_id, map_role, action.name)
@@ -933,6 +924,8 @@ class SkillExecutionMixin:
                 ),
                 None,
             )
+        if check_only:
+            return None, None
         before, failure = self._prepare_before_click(
             action, detection, card_id=card_id, map_role=map_role
         )

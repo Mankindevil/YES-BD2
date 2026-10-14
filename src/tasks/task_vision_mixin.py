@@ -289,9 +289,11 @@ class TaskVisionMixin:
         interval: float = 0.35,
         timeout: float | None = None,
     ) -> bool:
+        allow_loading_wait = timeout is None
         if timeout is None:
             timeout = float(self.config.get("主页确认等待秒数", 10.0))
         end_at = monotonic() + timeout
+        loading_wait_used = False
         last_left_hits = 0
         last_p95 = 0.0
         last_gacha_text = ""
@@ -314,6 +316,21 @@ class TaskVisionMixin:
             self.info_set(f"{name} 抽抽乐 OCR", last_gacha_text or "-")
             if confirmed:
                 return True
+            # A startup/page transition is not a failed home screen. Give it
+            # one bounded loading allowance; explicit short probes retain
+            # their caller's deadline. Never click announcements on black frames.
+            from src.tasks.recovery import _transition_frame
+
+            if allow_loading_wait and _transition_frame(frame[::4, ::4]):
+                if not loading_wait_used:
+                    loading_wait_used = True
+                    budget = max(0.0, min(120.0, float(
+                        self.config.get("loading 消失等待秒数", 35.0)
+                    )))
+                    end_at = max(end_at, monotonic() + budget)
+                self.info_set(f"{name} 加载等待", "游戏仍在加载，等待主页就绪")
+                self.sleep(interval)
+                continue
             self.clear_temporary_home_announcement_if_needed(
                 left_hits=last_left_hits,
                 required_left_hits=HOME_LEFT_COLUMN_REQUIRED_HITS,

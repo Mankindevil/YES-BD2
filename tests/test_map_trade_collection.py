@@ -192,6 +192,7 @@ class CollectionCardTest(unittest.TestCase):
             ),
             SimpleNamespace(),
         )
+        navigator.current_collection_location = lambda: None
         navigator._locate_story_card = lambda _card_id: located
         navigator.card_status = SimpleNamespace(
             detect=lambda detected_frame, center: (
@@ -269,6 +270,7 @@ class CollectionCardTest(unittest.TestCase):
             ),
             SimpleNamespace(),
         )
+        navigator.current_collection_location = lambda: None
         navigator._locate_story_card = lambda _card_id: located
         navigator._enter_located_story_card = lambda value: (
             entered.append(value) or NavigationResult(True, ScreenState.SANDBOX, "Q_sp1")
@@ -327,6 +329,7 @@ class CollectionCardTest(unittest.TestCase):
             ),
             SimpleNamespace(),
         )
+        navigator.current_collection_location = lambda: None
         navigator._locate_story_card = lambda _card_id: located
         navigator.card_status = SimpleNamespace(
             detect=lambda *_args: (_ for _ in ()).throw(RuntimeError("template missing"))

@@ -6,22 +6,23 @@ recent finished run of every one-time task into a small JSON file and derives
 "completed today / this week" from the game's Beijing-time refresh anchors
 (daily 08:00, weekly Monday 08:00, UTC+8).
 
-Batch tasks (一键完成日常) run their children through ``task.run()`` directly,
-so the executor never emits ``task_done`` for them.  ``record_task_done``
-therefore fans a batch record out into per-child records using the batch's
-``info`` lists (完成/失败/跳过), making a child finished inside the batch count
-the same as running it standalone.
+Batch tasks (一键完成日常) save each child's result immediately because the
+executor never emits ``task_done`` for children called through ``task.run()``.
+The batch's final/stop record also fans out its 完成/失败 lists. Per-day success
+is retained across failed reruns; the latest run still reports its own result.
 """
 
 from __future__ import annotations
 
+import json
 import os
+import tempfile
 import time
 from datetime import datetime, timedelta
 from typing import Any
 
 from ok import Logger
-from ok.util.file import get_relative_path, read_json_file, write_json_file
+from ok.util.file import get_relative_path, read_json_file
 
 from src.tasks.BaseBD2Task import task_info_snapshot
 from src.utils.game_day import DAILY_REFRESH_HOUR, GAME_TZ
@@ -67,6 +68,8 @@ def _merge_days(previous: dict | None, finished: float, ok: bool) -> dict:
     days = {}
     if isinstance(previous, dict) and isinstance(previous.get("days"), dict):
         days = {str(key): bool(value) for key, value in previous["days"].items()}
+    elif isinstance(previous, dict) and previous.get("finished"):
+        days[game_day_key(previous["finished"])] = bool(previous.get("ok"))
     key = game_day_key(finished)
     days[key] = bool(days.get(key)) or bool(ok)
     for old in sorted(days)[:-KEEP_DAYS]:
@@ -163,14 +166,31 @@ class RunHistoryStore:
         }
 
     def _save(self) -> None:
+        temporary = None
         try:
-            write_json_file(
-                self.path,
-                {"version": STORE_VERSION, "tasks": self._records},
-            )
+            folder = os.path.dirname(os.path.abspath(self.path))
+            os.makedirs(folder, exist_ok=True)
+            with tempfile.NamedTemporaryFile(
+                mode="w", encoding="utf-8", dir=folder, suffix=".tmp", delete=False
+            ) as file:
+                temporary = file.name
+                json.dump(
+                    {"version": STORE_VERSION, "tasks": self._records}, file,
+                    indent=4, ensure_ascii=False,
+                )
+                file.flush()
+                os.fsync(file.fileno())
+            os.replace(temporary, self.path)
+            temporary = None
             self._mtime = self._file_mtime()
         except Exception as exc:  # never let UI metadata break task execution
             logger.error(f"save run history failed: {exc}")
+        finally:
+            if temporary is not None:
+                try:
+                    os.unlink(temporary)
+                except OSError:
+                    pass
 
     def last_run(self, task_name: str) -> dict | None:
         self._refresh()
@@ -179,12 +199,35 @@ class RunHistoryStore:
     def is_completed_today(self, task_name: str, now: float | None = None) -> bool:
         self._refresh()
         record = self._records.get(task_name)
-        return bool(record and record.get("ok") and record["finished"] >= day_start_ts(now))
+        now = time.time() if now is None else now
+        days = (record or {}).get("days") or {}
+        return bool(
+            days.get(game_day_key(now))
+            or (record and record.get("ok") and day_start_ts(now) <= record["finished"] <= now)
+        )
 
     def is_completed_this_week(self, task_name: str, now: float | None = None) -> bool:
         self._refresh()
         record = self._records.get(task_name)
-        return bool(record and record.get("ok") and record["finished"] >= week_start_ts(now))
+        now = time.time() if now is None else now
+        days = (record or {}).get("days") or {}
+        first, last = game_day_key(week_start_ts(now)), game_day_key(now)
+        return bool(
+            any(ok and first <= key <= last for key, ok in days.items())
+            or (record and record.get("ok") and week_start_ts(now) <= record["finished"] <= now)
+        )
+
+    def record_child_result(self, name: str, *, ok: bool, started: float, finished: float) -> None:
+        """Persist a child immediately, without waiting for the batch to end."""
+        self._refresh()
+        self._records[name] = {
+            "finished": finished,
+            "duration": max(0.0, finished - started),
+            "status": "随一键完成日常完成" if ok else "随一键完成日常失败",
+            "ok": ok,
+            "days": _merge_days(self._records.get(name), finished, ok),
+        }
+        self._save()
 
     def recent_days(self, task_name: str, count: int = 7, now: float | None = None) -> list:
         """Oldest first: True (done), False (ran, failed) or None (no run) per game day."""
@@ -203,6 +246,7 @@ class RunHistoryStore:
 
     def record_task_done(self, task, finished: float | None = None) -> None:
         """Record a finished run, fanning batch results out to children."""
+        self._refresh()
         finished = time.time() if finished is None else finished
         started = getattr(task, "start_time", 0) or 0
         duration = max(0.0, finished - started) if started else None
@@ -235,6 +279,7 @@ class RunHistoryStore:
         抽抽乐, 继续 should not redo what was already done).  The batch's own
         record is left alone: the batch did not finish.
         """
+        self._refresh()
         child_tasks = getattr(task, "child_tasks", None)
         if not child_tasks:
             return
@@ -285,7 +330,19 @@ class RunHistoryStore:
             child_task = None
             if executor is not None:
                 try:
-                    child_task = executor.get_task_by_class(child.task_class)
+                    resolver = getattr(task, "_child_task", None)
+                    if callable(resolver):
+                        child_task = resolver(child.task_class)
+                    else:
+                        candidates = (
+                            list(getattr(executor, "onetime_tasks", None) or [])
+                            + list(getattr(executor, "trigger_tasks", None) or [])
+                        )
+                        child_task = next(
+                            (item for item in candidates if type(item) is child.task_class), None
+                        )
+                        if child_task is None:
+                            child_task = executor.get_task_by_class(child.task_class)
                 except Exception:
                     child_task = None
             names[child.config_key] = str(getattr(child_task, "name", None) or child.config_key)

@@ -169,6 +169,7 @@ class CollectionResult:
     depleted: bool = False
     completed_submaps: int = 0
     message: str = ""
+    deferred: bool = False
 
 
 STORY_CARD_NAMES = (
@@ -229,6 +230,12 @@ STORY_COLLECTION_MAPS = {
 STORY_COLLECTION_ROLES = {
     18: (CollectionMapRole.BATTLE_AREA_1, CollectionMapRole.BATTLE_AREA_2),
 }
+# Chapter 18 has additional map pages that must be recognized for navigation
+# and recovery, but must never be added to the collection/skill itinerary.
+STORY_NAVIGATION_ONLY_MAP_TITLES = (
+    "科库托斯暗黑神殿", "记忆岔路口", "儿童房", "阿札尔之屋",
+    "第四记忆空间", "第五记忆空间", "第二记忆空间", "第三记忆空间",
+)
 # Cards counted done once their 压制 badge completes.  Chapter 18 after 战斗Ⅰ
 # and 战斗Ⅲ (live 2026-09-30): 压制 complete, 吸取 29 -> 7 left on maps Leo
 # does not collect.  Chapter 6 (Leo 2026-10-05): 吸取 keeps 2 after all three

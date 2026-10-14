@@ -3,6 +3,7 @@ import tempfile
 import unittest
 from datetime import datetime
 from types import SimpleNamespace
+from unittest.mock import patch
 
 from src.tasks.run_history import (
     BEIJING_TZ,
@@ -95,6 +96,16 @@ class RunHistoryStoreTest(unittest.TestCase):
 
         reloaded = RunHistoryStore(self.path)
         self.assertEqual(reloaded.last_run("快速狩猎"), record)
+
+    def test_failed_checkpoint_replace_preserves_previous_file(self):
+        self.store.record_child_result("first", ok=True, started=1000, finished=1090)
+        with open(self.path, "rb") as file:
+            before = file.read()
+        with patch("src.tasks.run_history.os.replace", side_effect=OSError("interrupted")):
+            self.store.record_child_result("second", ok=True, started=1100, finished=1190)
+        with open(self.path, "rb") as file:
+            self.assertEqual(before, file.read())
+        self.assertIsNotNone(RunHistoryStore(self.path).last_run("first"))
 
     def test_error_info_marks_run_failed(self):
         task = _TaskStub("每日跑商", info={"状态": "跑商完成。", "Error": "boom"})
@@ -198,11 +209,11 @@ class RunHistoryStoreTest(unittest.TestCase):
         self.assertFalse(
             self.store.is_completed_today("广场女神像", now=_beijing_ts(2026, 8, 19, 9, 0))
         )
-        # A failed run never counts.
+        # A later failed rerun must not erase today's earlier success.
         self.store.record_task_done(
             _TaskStub("广场女神像", info={"Error": "x"}), finished=_beijing_ts(2026, 8, 18, 10, 0)
         )
-        self.assertFalse(
+        self.assertTrue(
             self.store.is_completed_today("广场女神像", now=_beijing_ts(2026, 8, 18, 11, 0))
         )
 
@@ -215,6 +226,40 @@ class RunHistoryStoreTest(unittest.TestCase):
         self.assertFalse(
             self.store.is_completed_this_week("每周跑图", now=_beijing_ts(2026, 8, 24, 8, 1))
         )
+
+    def test_weekly_success_survives_a_failed_rerun_and_resets_next_week(self):
+        name = "末日之书"
+        done = _beijing_ts(2026, 8, 17, 9)
+        failed = _beijing_ts(2026, 8, 19, 9)
+        self.store.record_child_result(name, ok=True, started=done - 60, finished=done)
+        self.store.record_child_result(name, ok=False, started=failed - 60, finished=failed)
+        restored = RunHistoryStore(self.path)
+        self.assertFalse(restored.last_run(name)["ok"])
+        self.assertFalse(restored.is_completed_today(name, now=failed))
+        self.assertTrue(restored.is_completed_this_week(name, now=failed))
+        self.assertFalse(restored.is_completed_this_week(name, now=_beijing_ts(2026, 8, 24, 8)))
+
+    def test_batch_history_resolves_exact_class_before_parent_class_match(self):
+        class Refine:
+            name = "每日精炼一次"
+
+        class Junk(Refine):
+            name = "爛装强化分解"
+
+        junk, refine = Junk(), Refine()
+        executor = SimpleNamespace(
+            onetime_tasks=[junk, refine],
+            get_task_by_class=lambda cls: next(t for t in [junk, refine] if isinstance(t, cls)),
+        )
+        batch = _TaskStub(
+            "一键完成日常", info={"完成": "精炼", "失败": "分解"},
+            child_tasks=[_ChildSpec("精炼", Refine), _ChildSpec("分解", Junk)],
+            executor=executor,
+        )
+        now = _beijing_ts(2026, 10, 10, 10)
+        self.store.record_stopped_batch(batch, stopped=now)
+        self.assertTrue(self.store.is_completed_today("每日精炼一次", now=now))
+        self.assertFalse(self.store.is_completed_today("爛装强化分解", now=now))
 
     def test_batch_run_fans_out_to_child_display_names(self):
         daily_cls = type("DailyTask", (), {})

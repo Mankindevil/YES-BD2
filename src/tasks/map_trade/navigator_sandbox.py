@@ -22,6 +22,7 @@ from src.tasks.map_trade.action_icons import (
 from src.tasks.map_trade.collector_constants import SEARCH_COUNTDOWN_RELATIVE_ROI
 from src.tasks.map_trade.models import (
     CARD_BY_ID,
+    COLLECTABLE_CARDS,
     EVENT_WALK_EDGES,
     RESTART_NAV_ENTRIES,
     RESUMING_WALK_CARD_IDS,
@@ -2303,6 +2304,54 @@ class SandboxNavigationMixin:
             )
         return self._confirm_collection_arrival(card, target)
 
+    @staticmethod
+    def _collection_location_from_header(header: str) -> tuple[str, str] | None:
+        """Resolve a unique card and map, preferring the longest map name."""
+        text = normalize_text(header)
+        if not text.startswith(("安全", "战斗")):
+            return None
+        hits = []
+        for card in COLLECTABLE_CARDS:
+            keys = SandboxNavigationMixin._target_keys_in_text(card, text)
+            for target in card.targets:
+                if target.key in keys:
+                    length = max(len(normalize_text(title)) for title in target.titles
+                                 if normalize_text(title) in text)
+                    hits.append((length, card.card_id, target.key))
+        if not hits:
+            return None
+        longest = max(hit[0] for hit in hits)
+        identities = {(card_id, key) for length, card_id, key in hits if length == longest}
+        return next(iter(identities)) if len(identities) == 1 else None
+
+    def current_collection_location(self) -> tuple[str, str] | None:
+        """Fresh field/map observation, never infer location from a teleport preview."""
+        state = self.classify()
+        if state in {ScreenState.AREA_MAP, ScreenState.SANDBOX_MAP}:
+            restored = self._restore_field_after_map_failure()
+            if not restored.success:
+                return None
+        elif state != ScreenState.SANDBOX:
+            return None
+        if not self.ensure_small_minimap():
+            return None
+        frame = self.vision.capture()
+        walking, caught = self._walk_flags(frame)
+        if walking or caught:
+            self._status("当前位置", "角色仍在移动或被驱逐，暂不沿用地图")
+            return None
+        header = self._open_field_map()
+        if header is None:
+            return None
+        first = self._collection_location_from_header(header)
+        second = self._collection_location_from_header(self._field_map_header())
+        closed = self._close_confirmed_map_page({MapPageMode.SANDBOX_LARGE_MAP})
+        if not closed.success or first is None or first != second:
+            self._status("当前位置", "地图身份或返回箱庭未稳定确认，使用原导航流程")
+            return None
+        self._status("当前位置", f"{first[0]}/{first[1]}，已连续确认")
+        return first
+
     def current_collection_target(self, card: CardSpec) -> str | None:
         """Which of the card's three maps the character is on (area map title).
 
@@ -2319,6 +2368,19 @@ class SandboxNavigationMixin:
         self._status("区域地图", f"当前位置 {header} -> {keys[0] if len(keys) == 1 else '-'}")
         return keys[0] if len(keys) == 1 else None
 
+    def _restore_field_after_map_failure(self) -> NavigationResult:
+        """Leave an identified map before retrying field navigation."""
+        detection = self._detect_map_page_mode(self.vision.capture())
+        if detection.mode != MapPageMode.UNKNOWN:
+            return self._close_confirmed_map_page({detection.mode})
+        if "移动魔法阵" in normalize_text(detection.header_text):
+            return NavigationResult(
+                False,
+                ScreenState.UNKNOWN,
+                "仍在未确认的移动魔法阵页面，停止箱庭导航重试",
+            )
+        return self._wait_for_current_sandbox()
+
     def _open_teleport_map_anywhere(self) -> NavigationResult:
         """The teleport map, going to the hunting ground's circle if needed.
 
@@ -2326,14 +2388,37 @@ class SandboxNavigationMixin:
         the minimap's ≡ menu -> 狩猎场 -> 立即前往, then its circle.
         """
         opened = self.open_teleport_map_from_sandbox()
+        if opened.success and opened.map_page_mode == MapPageMode.GENERATE_TELEPORT:
+            frame = self.vision.capture()
+            if not any(
+                self._optional_match(frame, spec) is not None
+                for spec in (TELEPORT_MAP_FORWARD_TEMPLATE, TELEPORT_MAP_BACKWARD_TEMPLATE)
+            ):
+                # Live 4K: the beginner skill page stays on 儿童房 after
+                # both arrow clicks. Use a physical portal instead of
+                # returning the same unpageable skill screen on every retry.
+                self._status("导航状态", "技能地图无可确认翻页按钮，退图后改走实体传送阵")
+                opened = NavigationResult(
+                    False, ScreenState.AREA_MAP,
+                    "技能地图无法确认翻页按钮，改用实体传送阵",
+                    map_page_mode=MapPageMode.GENERATE_TELEPORT,
+                )
         if opened.success:
             return opened
+        if opened.state != ScreenState.SANDBOX:
+            restored = self._restore_field_after_map_failure()
+            if not restored.success:
+                return restored
         # Not on a circle: click the teleport gate on the area map and walk
         # there (user's first choice, 2026-09-28).
         self._status("导航状态", "不在传送阵旁，点地图上的传送门走过去")
         walked = self._walk_to_sandbox_teleport_interaction()
         if walked.success:
             return walked
+        if walked.state != ScreenState.SANDBOX:
+            restored = self._restore_field_after_map_failure()
+            if not restored.success:
+                return restored
         self._status("导航状态", "地图传送门不可用，前往狩猎场的传送阵")
         entry = self._travel_to_hunting_ground()
         if entry is None:
@@ -2563,10 +2648,15 @@ class SandboxNavigationMixin:
         frame = self.vision.capture()
         spots = WALK_EDGES.get(edge) or EVENT_WALK_EDGES.get(edge)
         if spots:
-            points = [
+            calibrated = [
                 (round(x * frame.shape[1] / 1920), round(y * frame.shape[0] / 1080))
                 for x, y in spots
             ]
+            # The chapter-6 exit can move with the map layout or be covered
+            # by the player. Prefer its visible label, retaining the calibrated
+            # fallbacks when OCR cannot see it. These are client-sized points.
+            labeled = self._exit_label_points(frame, target) if edge in WALK_EDGES else []
+            points = list(dict.fromkeys(labeled + calibrated))
         else:
             end_at = monotonic() + WALK_LABEL_READ_TIMEOUT
             points = self._exit_label_points(frame, target)
@@ -2659,6 +2749,8 @@ class SandboxNavigationMixin:
             boxes = self.vision.ocr_boxes(
                 frame, "区域地图出口", relative_roi=AREA_MAP_EXIT_LABEL_RELATIVE_ROI
             )
+        except (TaskDisabledException, FinishedException):
+            raise
         except Exception as exc:
             self._status("区域地图出口 OCR错误", str(exc))
             return []
@@ -2711,6 +2803,10 @@ class SandboxNavigationMixin:
         card = CARD_BY_ID.get(card_id)
         if card is None or not card.collectable:
             return NavigationResult(False, ScreenState.UNKNOWN, f"非跑图剧情卡带：{card_id}")
+        if via_hunting_ground:
+            restored = self._restore_field_after_map_failure()
+            if not restored.success:
+                return restored
         if not self.ensure_small_minimap():
             return NavigationResult(False, ScreenState.SANDBOX, "小地图放大状态未能切回")
         if via_hunting_ground and (npc := RESTART_NAV_ENTRIES.get(card.card_id)):

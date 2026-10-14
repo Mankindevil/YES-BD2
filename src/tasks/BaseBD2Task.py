@@ -154,7 +154,16 @@ class BaseBD2Task(BaseTask):
                 if constructed and (wanted or getattr(type(self), "start_from_home", False)):
                     game_size.fix_or_warn(self)
                 if constructed and getattr(type(self), "start_from_home", False):
-                    self._go_home_before_run()
+                    if self._go_home_before_run() is False:
+                        reason = (
+                            "仍在登录画面，等待登录后再执行。"
+                            if getattr(self, "_recovery_saw_title", False)
+                            else "尚未确认主页或弹窗未清理完，停止执行。"
+                        )
+                        self.info_set("状态", reason)
+                        problem_report.note_problem(self, "fail", reason)
+                        scope.result = False
+                        return False
                 try:
                     result = run(self, *args, **run_kwargs)
                 except TaskDisabledException:
@@ -189,15 +198,23 @@ class BaseBD2Task(BaseTask):
         guarded_run.__doc__ = run.__doc__
         cls.run = guarded_run
 
-    def _go_home_before_run(self) -> None:
+    def can_start_from_current_screen(self) -> bool:
+        """Opt-in task prerequisite check; unknown screens still go home."""
+        return False
+
+    def _go_home_before_run(self) -> bool:
         try:
+            if self.can_start_from_current_screen():
+                self.info_set("启动方式", "当前画面可继续，跳过回主页")
+                return True
             from src.tasks.recovery import recover_to_home
 
-            recover_to_home(self)  # returns at once when already home
+            return recover_to_home(self)  # returns at once when already home
         except (TaskDisabledException, FinishedException):
             raise
-        except Exception:
-            pass  # the task's own home check still decides
+        except Exception as exc:
+            self.log_warning(f"执行前检查主页失败：{exc}")
+            return False
 
     def _leave_home_after_failed_run(self) -> None:
         from src.tasks.recovery import recover_to_home

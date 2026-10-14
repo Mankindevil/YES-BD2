@@ -11,6 +11,8 @@ from ok.task.exceptions import TaskDisabledException
 from ok.util.logger import Logger
 from win32api import GetCursorPos, SetCursorPos
 
+from src.capture.letterbox import client_point
+
 logger = Logger.get_logger(__name__)
 
 # On the 桌面分身 the game samples the cursor at a lower frame rate (Remote
@@ -62,6 +64,7 @@ class BD2Interaction(PostMessageInteraction):
 
             base_hwnd = self.hwnd_window.top_hwnd or self.hwnd_window.hwnd
             if x > 0 and y > 0:
+                x, y = client_point(self.capture, x, y)
                 top_x, top_y = self.hwnd_window.get_top_window_cords(x, y)
                 abs_x, abs_y = win32gui.ClientToScreen(base_hwnd, (int(top_x), int(top_y)))
                 self.bg_mouse_pos = (top_x, top_y)
@@ -81,19 +84,19 @@ class BD2Interaction(PostMessageInteraction):
         with self._input_lock:
             old = GetCursorPos()
             try:
-                self.post(win32con.WM_MOUSEMOVE, 0, win32api.MAKELONG(x1, y1))
+                self.post(win32con.WM_MOUSEMOVE, 0, self._client_lparam(x1, y1))
                 SetCursorPos(self.capture.get_abs_cords(x1, y1))
                 time.sleep(0.03)
-                self.post(win32con.WM_LBUTTONDOWN, win32con.MK_LBUTTON, win32api.MAKELONG(x1, y1))
+                self.post(win32con.WM_LBUTTONDOWN, win32con.MK_LBUTTON, self._client_lparam(x1, y1))
                 time.sleep(0.05)
                 for index in range(1, steps + 1):
                     x = round(x1 + (x2 - x1) * index / steps)
                     y = round(y1 + (y2 - y1) * index / steps)
                     SetCursorPos(self.capture.get_abs_cords(x, y))
-                    self.post(win32con.WM_MOUSEMOVE, win32con.MK_LBUTTON, win32api.MAKELONG(x, y))
+                    self.post(win32con.WM_MOUSEMOVE, win32con.MK_LBUTTON, self._client_lparam(x, y))
                     time.sleep(duration / steps)
                 time.sleep(0.05)
-                self.post(win32con.WM_LBUTTONUP, 0, win32api.MAKELONG(x2, y2))
+                self.post(win32con.WM_LBUTTONUP, 0, self._client_lparam(x2, y2))
             finally:
                 time.sleep(0.03)
                 try:
@@ -140,7 +143,7 @@ class BD2Interaction(PostMessageInteraction):
                 SetCursorPos((abs_x, abs_y))
                 time.sleep(0.025)
 
-            click_pos = win32api.MAKELONG(x, y)
+            click_pos = self._client_lparam(x, y)
             if key == "left":
                 btn_down = win32con.WM_LBUTTONDOWN
                 btn_mk = win32con.MK_LBUTTON
@@ -223,7 +226,15 @@ class BD2Interaction(PostMessageInteraction):
 
     def update_mouse_pos(self, x, y, activate=True):
         with self._input_lock:
-            return super().update_mouse_pos(x, y, activate=activate)
+            if x != -1 and y != -1:
+                x, y = client_point(self.capture, x, y)
+            result = super().update_mouse_pos(x, y, activate=activate)
+            # Parent mouse_up consumes mouse_pos as client coordinates.
+            self.mouse_pos = (win32api.LOWORD(result), win32api.HIWORD(result))
+            return result
+
+    def _client_lparam(self, x, y):
+        return win32api.MAKELONG(*client_point(self.capture, x, y))
 
     def mouse_up(self, key="left"):
         with self._input_lock:

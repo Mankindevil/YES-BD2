@@ -144,6 +144,7 @@ class ManualResolutionTest(unittest.TestCase):
         self.assertEqual(
             (
                 (3840, 2160),
+                (2560, 1600),
                 (2560, 1440),
                 (1920, 1080),
                 (1600, 900),
